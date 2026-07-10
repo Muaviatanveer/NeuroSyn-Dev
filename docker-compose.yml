@@ -1,0 +1,21 @@
+# AMD/docker-compose.yml
+
+version: '3.8'
+
+services:
+  neurosyn_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: neurosyn_dev_core
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      # CRITICAL: Mounts the host Docker socket so NeuroSyn-Dev can run
+      # sandboxes natively on the host's AMD Developer Cloud hardware
+      - /var/run/docker.sock:/var/run/docker.sock
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production

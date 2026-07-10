@@ -1,0 +1,15 @@
+{
+  "name": "neurosyn-dev",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/server.js",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.28.0",
+    "cors": "^2.8.5",
+    "dockerode": "^4.0.2",
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "openai": "^4.52.7",
+    "uuid": "^10.0.0"
+  }
+}
