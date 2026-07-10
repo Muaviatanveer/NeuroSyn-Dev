@@ -2,26 +2,27 @@
 
 FROM node:20-slim
 
-# Install system dependencies including curl for health checks
+# Install system utilities including curl for container health checks
 RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
 
-# Copy dependency definitions
+# 1. Install and compile backend dependencies
 COPY package*.json ./
-
-# Install clean production dependencies
 RUN npm ci --only=production
 
-# Copy application source code
+# 2. Copy the frontend folder and compile React inside the container
+COPY frontend/ ./frontend/
+RUN cd frontend && npm install && npm run build
+
+# 3. Copy the backend source directories
 COPY src/ ./src/
 
-# Expose server entry port
 EXPOSE 3000
 
-# Safety health check inside container
+# Container health check safeguard
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
 
