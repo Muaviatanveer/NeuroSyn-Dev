@@ -38,9 +38,9 @@ clients.openai = hasFireworks ? clients.fireworks : clients.localAmd;
 // --- 4. Model Registry ---
 clients.models = {
     fireworks: {
-        // ⚡ FIXED: Switched publisher segment from 'fireworks' to 'google'
-        gemma2_9b: 'accounts/google/models/gemma-2-9b-it',
-        gemma2_27b: 'accounts/google/models/gemma-2-27b-it'
+        // ⚡ FIXED: Restored correct Fireworks namespace and un-hyphenated gemma2 name
+        gemma2_9b: 'accounts/fireworks/models/gemma2-9b-it',
+        gemma2_27b: 'accounts/fireworks/models/gemma-2-27b-it'
     },
     local: {
         qwenCoder: 'Qwen/Qwen2.5-Coder-7B-Instruct',
@@ -48,7 +48,6 @@ clients.models = {
         lightweight: 'Qwen/Qwen2.5-Coder-7B-Instruct'
     }
 };
-
 
 logger.info('✅ Client fabric initialization complete.');
 export default clients;
