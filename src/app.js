@@ -9,7 +9,10 @@ import clients from './config/clients.js';
 import logger from './utils/logger.js';
 import engineeringMemory from './core/engineeringMemory.js';
 import { connectDB, UserSession } from './config/db.js';
+
+// Connect to MongoDB
 connectDB();
+
 const app = express();
 const MEMORY_DB_FILE = path.join(process.cwd(), 'memory.db.json');
 
@@ -25,7 +28,7 @@ app.get('/health', (req, res) => {
 });
 
 /**
- * endpoint for Feature 1 & Feature 3: Future Bug Prediction
+ * Endpoint for Feature 1 & Feature 3: Future Bug Prediction
  */
 app.post('/api/task/strategy', async (req, res, next) => {
     const { task, context } = req.body;
@@ -66,7 +69,6 @@ Return ONLY a valid JSON object matching this schema:
 
         const localClient = clients.localAmd;
         const response = await localClient.chat.completions.create({
-            // ⚡ 1A: Upgraded Dynamic Model Resolution
             model: (clients.models && clients.models.local && clients.models.local.gemma) || 'gemma2:27b',
             messages: [{ role: 'system', content: prompt }],
             response_format: { type: 'json_object' },
@@ -78,7 +80,6 @@ Return ONLY a valid JSON object matching this schema:
 
     } catch (error) {
         logger.error(`[ThirdEye] Strategy/Prediction compile failed: ${error.message}`);
-        // Return matching fallback brief with prediction mappings
         return res.status(200).json({
             issueSummary: "Insecure Password Storage Resolution",
             constraints: ["Must handle empty string values", "Salt iteration parameters must align with hardware limits"],
@@ -163,7 +164,6 @@ app.post('/api/task/stream', async (req, res) => {
 
     let result;
 
-    // --- TIER 1: Core Orchestration ---
     try {
         logger.info(`[API] Ingesting specifications for resilient stream compilation.`);
         result = await synapseFabric.processTask(task, {
@@ -177,7 +177,6 @@ app.post('/api/task/stream', async (req, res) => {
         return;
     }
 
-    // --- TIER 2: Isolated Remote Deployment (Robust Git-Aligned Version) ---
     if (options.gitPush && options.token) {
         const generatedFiles = [];
         try {
@@ -190,10 +189,8 @@ app.post('/api/task/stream', async (req, res) => {
             const userData = await userRes.json();
             const username = userData.login;
 
-            // ⚡ Smart Naming Applied!
             const projectName = refineProjectName(options.prompt);
 
-            // ⚡ Upgraded Array & Node Verification Guard (Patch 1)
             if (result.nodeOutputs) {
                 Object.entries(result.nodeOutputs).forEach(([nodeId, output]) => {
                     if (output && output.patch) {
@@ -225,14 +222,12 @@ app.post('/api/task/stream', async (req, res) => {
                 });
             }
 
-            // Fallback default files
             if (generatedFiles.length === 0) {
                 generatedFiles.push(
                     { path: "src/main.py", content: result.verifiedPatch || "# Main verified application entry." }
                 );
             }
 
-            // ⚡ Smart README Generation (Appends list of exact generated files)
             const hasReadme = generatedFiles.some(f => f.path.toLowerCase() === 'readme.md');
             if (!hasReadme) {
                 generatedFiles.push({
@@ -241,7 +236,6 @@ app.post('/api/task/stream', async (req, res) => {
                 });
             }
 
-            // Create GitHub Repository
             sendStreamData('status', { message: `Deploy: Creating repository "${username}/${projectName}" on GitHub...` });
             const createRepoRes = await fetch('https://api.github.com/user/repos', {
                 method: 'POST',
@@ -266,7 +260,6 @@ app.post('/api/task/stream', async (req, res) => {
             const repoData = await createRepoRes.json();
             await new Promise(resolve => setTimeout(resolve, 2000));
 
-            // Sequentially commit files
             for (const file of generatedFiles) {
                 sendStreamData('status', { message: `Deploy: Committing verified file: ${file.path}` });
                 const encodedContent = Buffer.from(file.content).toString('base64');
@@ -297,14 +290,12 @@ app.post('/api/task/stream', async (req, res) => {
                 });
             }
 
-            // Full Success Dispatch with Dynamic Verdict Fallback Guard
             sendStreamData('complete', {
                 result: {
                     ...result,
                     success: true,
                     repoUrl: repoData.html_url,
                     files: generatedFiles,
-                    // ⚡ 1C: Upgraded Debate Verdicts Coercion
                     debateSummary: {
                         verdicts: (result && result.debateSummary && result.debateSummary.verdicts) || []
                     }
@@ -333,7 +324,6 @@ app.post('/api/task/stream', async (req, res) => {
                     success: false,
                     error: `GitHub Push Blocked: ${deployError.message}. Code compiled successfully locally inside browser workspace.`,
                     files: safeFiles,
-                    // ⚡ 1C: Upgraded Debate Verdicts Coercion Fallback
                     debateSummary: {
                         verdicts: (result && result.debateSummary && result.debateSummary.verdicts) || []
                     }
@@ -341,11 +331,9 @@ app.post('/api/task/stream', async (req, res) => {
             });
         }
     } else {
-        // Standard diagnostic run completion (Tab 1)
         sendStreamData('complete', {
             result: {
                 ...result,
-                // ⚡ 1C: Upgraded Debate Verdicts Coercion Fallback
                 debateSummary: {
                     verdicts: (result && result.debateSummary && result.debateSummary.verdicts) || []
                 }
@@ -375,8 +363,6 @@ app.post('/api/task/deploy', async (req, res, next) => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
-            // ⚡ FIXED: If the file exists, retrieve its SHA to update it. 
-            // If it returns 404, we leave fileSha as null to trigger a new file creation on GitHub.
             if (fileRes.ok) {
                 const fileData = await fileRes.json();
                 fileSha = fileData.sha;
@@ -391,14 +377,13 @@ app.post('/api/task/deploy', async (req, res, next) => {
         const commitMessage = `🔒 NeuroSyn-Dev Sentinel Repair: Setup verified ${targetFile}`;
         const encodedContent = Buffer.from(patch).toString('base64');
 
-        // Execute the PUT request (GitHub creates the file if fileSha is undefined/null)
         const updateRes = await fetch(`https://api.github.com/repos/${repo}/contents/${targetFile}`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 message: commitMessage,
                 content: encodedContent,
-                sha: fileSha || undefined // Omit SHA if creating a new file
+                sha: fileSha || undefined
             })
         });
 
@@ -417,10 +402,8 @@ app.post('/api/task/deploy', async (req, res, next) => {
     }
 });
 
-
 /**
- * endpoint for Feature 2: AI CTO Mode
- * Performs repository static code crawling and returns real-time health scorecard + scaling blockers.
+ * Endpoint for Feature 2: AI CTO Mode
  */
 app.post('/api/task/scan', async (req, res, next) => {
     const { repo, token } = req.body;
@@ -429,7 +412,6 @@ app.post('/api/task/scan', async (req, res, next) => {
     try {
         logger.info(`[Sentinel] Initiating active codebase scan & AI CTO Mode evaluation on: ${repo}`);
 
-        // 1. Fetch file tree
         const treeRes = await fetch(`https://api.github.com/repos/${repo}/git/trees/main?recursive=1`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -444,7 +426,6 @@ app.post('/api/task/scan', async (req, res, next) => {
 
         const allowedExtensions = ['.js', '.ts', '.py', '.java'];
 
-        // ⚡ Upgraded Node Filter Syntax Guard (Patch 2)
         const codeFiles = (treeData.tree && treeData.tree.filter(function (node) {
             return node.type === 'blob' && allowedExtensions.some(function (ext) {
                 return node.path.endsWith(ext);
@@ -481,11 +462,9 @@ app.post('/api/task/scan', async (req, res, next) => {
             }
         }
 
-        // ⚡ NEW: Dynamic AI CTO Proactive Advisor (100% Real, Un-mocked)
         if (weaknesses.length === 0) {
             logger.info(`[Sentinel] Codebase is secure. Invoking local Qwen-Coder to generate custom, proactive architectural suggestions...`);
 
-            // Extract the first 15 real files from your repository as context
             const filePaths = codeFiles.map(f => f.path).slice(0, 15).join(', ');
 
             const ctoAdvisorPrompt = `
@@ -499,12 +478,12 @@ Return ONLY a valid JSON object matching this schema:
 {
   "weaknesses": [
     {
-      "id": "string", // Unique ID (e.g. "suggestion_1")
+      "id": "string", 
       "type": "OPTIMIZATION" | "MAINTAINABILITY",
       "severity": "SUGGESTION",
-      "title": "string", // Highly descriptive suggestion title specific to their files
-      "targetFile": "string", // Must be one of the actual files from the list
-      "impact": "string" // Explains why this is a good structural upgrade
+      "title": "string", 
+      "targetFile": "string", 
+      "impact": "string" 
     }
   ]
 }
@@ -538,7 +517,6 @@ Do not include markdown code block ticks in your response.
             }
         }
 
-        // ⚡ RUN AI CTO MODE LOGIC
         logger.info(`[Sentinel] Compiling CTO Mode Repository Health Audit...`);
         const ctoPrompt = `
 You are the AI CTO of NeuroSyn-Dev. Analyze the provided codebase and generate a comprehensive repo audit scorecard (values 0-100) and a list of the top scaling blocker items hindering scalability.
@@ -551,12 +529,12 @@ Return ONLY a valid JSON object matching this schema:
   "scores": {
     "architecture": number,
     "security": number,
-    "techDebt": number, // out of 100 (where 100 means very little tech debt)
+    "techDebt": number, 
     "scalability": number,
     "documentation": number,
     "testing": number
   },
-  "blockers": ["string"] // List 3-4 top scaling inhibitors found
+  "blockers": ["string"] 
 }
 `;
 
@@ -615,30 +593,24 @@ app.post('/api/memory/search', async (req, res) => {
     const { task } = req.body;
 
     try {
-        // Resolve dynamic module wrappers if bundlers nested the instance
         const memoryModule = engineeringMemory.default || engineeringMemory;
-
-        // ⚡ 1B: Upgraded Dynamic Module Search Extractor
         const searchFunction = (memoryModule.searchMemory || (memoryModule.default && memoryModule.default.searchMemory)).bind(memoryModule.default || memoryModule);
-
         const memory = await searchFunction(task);
         res.json({ memory });
     } catch (err) {
         logger.warn(`[Memory Router] Search bypassed: ${err.message}`);
-        res.json({ memory: null }); // Fail-safe fallback
+        res.json({ memory: null });
     }
 });
 
 /**
  * ⚡ F11 & F12: Time Machine & Sprint Planner
- * Fetches real commits for tech debt analysis and real issues for sprint planning
  */
 app.post('/api/github/insights', async (req, res) => {
     const { repo, token } = req.body;
     if (!repo || !token) return res.status(400).json({ error: 'Repo and Token required' });
 
     try {
-        // 1. Time Machine (Real Commits)
         const commitRes = await fetch(`https://api.github.com/repos/${repo}/commits?per_page=10`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -651,7 +623,6 @@ app.post('/api/github/insights', async (req, res) => {
             debtDelta: c.commit.message.length > 50 ? "+12%" : "-4%"
         }));
 
-        // 2. Sprint Planner (Real Issues)
         const issueRes = await fetch(`https://api.github.com/repos/${repo}/issues?state=open&per_page=20`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -682,7 +653,7 @@ app.post('/api/github/insights', async (req, res) => {
  * Plans the master project file structure and compiles the first batch (3-4 files).
  */
 app.post('/api/project/generate', async (req, res, next) => {
-    const { prompt, token, email } = req.body; // Map user variables
+    const { prompt, token, email } = req.body;
 
     if (!prompt || !token) {
         return res.status(400).json({ error: 'Prompt and Token are required.' });
@@ -702,7 +673,6 @@ app.post('/api/project/generate', async (req, res, next) => {
         const userData = await userRes.json();
         const username = userData.login;
 
-        // 1. Ask Qwen-Coder to plan the architectural file list first (Master Plan)
         const planningPrompt = `
 You are an expert software architect.
 Based on this project specification: "${prompt}", design a full, clean directories blueprint list (exactly 6 to 8 files total) to build a functional, stand-alone codebase.
@@ -726,18 +696,17 @@ Return ONLY a valid JSON object matching this schema:
         });
 
         const parsedPlan = JSON.parse(planResponse.choices[0].message.content.trim());
-        projectName = (parsedPlan.projectName || "autonomous-app").toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+        const uniqueSuffix = Math.floor(100 + Math.random() * 900);
+        projectName = `${(parsedPlan.projectName || "autonomous-app").toLowerCase().replace(/[^a-z0-9-_]/g, '-')}-${uniqueSuffix}`;
         const masterPlan = parsedPlan.masterPlan || [];
 
         if (masterPlan.length === 0) throw new Error("Failed to construct master plan.");
 
-        // 2. Select initial batch (first 3 files that have 0 or basic dependencies)
         const initialBatch = masterPlan.slice(0, 3);
         const batchFilePaths = initialBatch.map(f => f.path);
 
         logger.info(`[Generator] Compiling Initial Batch files: [${batchFilePaths.join(', ')}]`);
 
-        // 3. Instruct Qwen-Coder to write code *only* for the initial batch files
         const filesToCreate = [];
         for (const fileNode of initialBatch) {
             const generatePrompt = `
@@ -760,7 +729,6 @@ Return ONLY raw file code. Do not include markdown code block syntax.
             });
         }
 
-        // 4. Create repository on GitHub
         logger.info(`[Generator] Creating persistent GitHub repository: ${username}/${projectName}`);
         const createRepoRes = await fetch('https://api.github.com/user/repos', {
             method: 'POST',
@@ -778,9 +746,8 @@ Return ONLY raw file code. Do not include markdown code block syntax.
             throw new Error(`GitHub Repository Creation Denied: ${errData.message}`);
         }
         const repoData = await createRepoRes.json();
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Standard cooling sync
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // 5. Commit initial batch of files sequentially
         for (const file of filesToCreate) {
             const encodedContent = Buffer.from(file.content).toString('base64');
             await fetch(`https://api.github.com/repos/${username}/${projectName}/contents/${file.path}`, {
@@ -790,7 +757,6 @@ Return ONLY raw file code. Do not include markdown code block syntax.
             });
         }
 
-        // 6. Save State in MongoDB (rolloutStatus = paused)
         const session = new UserSession({
             id: sessionId,
             userId: activeUserEmail,
@@ -801,7 +767,7 @@ Return ONLY raw file code. Do not include markdown code block syntax.
             patch: filesToCreate[0]?.content || '',
             logs: `Planned master layout (${masterPlan.length} modules).\nBatch 1 successfully generated & committed.`,
             files: filesToCreate,
-            rolloutStatus: 'paused', // Set state to paused to trigger frontend continuation
+            rolloutStatus: 'paused',
             masterPlan: masterPlan
         });
         await session.save();
@@ -860,7 +826,6 @@ app.post('/api/github/tree', async (req, res) => {
  */
 app.post('/api/auth/github', async (req, res) => {
     const { code } = req.body;
-
     const clientId = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
 
@@ -894,23 +859,6 @@ app.post('/api/auth/github', async (req, res) => {
 
     } catch (error) {
         logger.error(`[Auth] Handshake aborted: ${error.message}`);
-        return res.status(500).json({ error: error.message });
-    }
-});
-
-/**
- * ⚡ F19: Persistent Operational Run History Directory
- */
-app.get('/api/history', async (req, res) => {
-    try {
-        let memories = [];
-        try {
-            const data = await fs.readFile(MEMORY_DB_FILE, 'utf-8');
-            memories = JSON.parse(data);
-        } catch (e) { }
-
-        return res.status(200).json({ history: memories.reverse() });
-    } catch (error) {
         return res.status(500).json({ error: error.message });
     }
 });
@@ -1004,65 +952,6 @@ app.get('/api/auth/google', (req, res) => {
     res.redirect(authUrl);
 });
 
-/**
- * ⚡ F22: Save Active Pipeline Run Session under User Segment
- */
-app.post('/api/history/save', async (req, res) => {
-    const { email, type, repo, title, prompt, patch, logs, scorecard, files } = req.body;
-    if (!email) return res.status(400).json({ error: "Active user required to commit memory." });
-
-    try {
-        let memories = [];
-        try {
-            const data = await fs.readFile(MEMORY_DB_FILE, 'utf-8');
-            memories = JSON.parse(data);
-        } catch (e) { }
-
-        const newRun = {
-            id: `RUN-${Date.now()}`,
-            userId: email,
-            type: type || 'diagnostic',
-            date: new Date().toISOString(),
-            repo: repo || 'Local Target Execution',
-            title: title || 'Autonomous Resolution',
-            prompt,
-            patch,
-            logs,
-            scorecard: scorecard || { security: 95, performance: 90, compositeConfidence: 92 },
-            files: files || []
-        };
-
-        memories.push(newRun);
-        await fs.writeFile(MEMORY_DB_FILE, JSON.stringify(memories, null, 2));
-
-        logger.info(`[Memory] Session successfully saved under user profile: ${email}`);
-        return res.status(200).json({ success: true, session: newRun });
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
-    }
-});
-
-/**
- * ⚡ F23: Segmented Session Fetcher
- */
-app.get('/api/history/user', async (req, res) => {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ error: "User Email query parameter is required." });
-
-    try {
-        let memories = [];
-        try {
-            const data = await fs.readFile(MEMORY_DB_FILE, 'utf-8');
-            memories = JSON.parse(data);
-        } catch (e) { }
-
-        const userHistory = memories.filter(run => run.userId === email);
-        return res.status(200).json({ history: userHistory.reverse() });
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
-    }
-});
-
 app.get('/api/config/google', (req, res) => {
     res.json({ clientId: process.env.GOOGLE_CLIENT_ID || '' });
 });
@@ -1072,56 +961,7 @@ app.get('/api/config/github', (req, res) => {
 });
 
 /**
- * ⚡ F25: Session Renaming API
- * Updates the custom descriptive title of an archived workspace session.
- */
-app.post('/api/history/rename', async (req, res) => {
-    const { email, runId, newTitle } = req.body;
-    if (!email || !runId || !newTitle) {
-        return res.status(400).json({ error: "Missing parameters for renaming operation." });
-    }
-
-    try {
-        const data = await fs.readFile(MEMORY_DB_FILE, 'utf-8');
-        const memories = JSON.parse(data);
-
-        const targetSession = memories.find(m => m.id === runId && m.userId === email);
-        if (targetSession) {
-            targetSession.title = newTitle;
-            await fs.writeFile(MEMORY_DB_FILE, JSON.stringify(memories, null, 2));
-            logger.info(`[Memory] Session ${runId} successfully renamed to: "${newTitle}"`);
-            return res.status(200).json({ success: true });
-        }
-
-        throw new Error("Archived session not found under this user account.");
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/api/history/delete', async (req, res) => {
-    const { email, runId } = req.body;
-    if (!email || !runId) {
-        return res.status(400).json({ error: "Missing parameters for deletion operation." });
-    }
-
-    try {
-        const data = await fs.readFile(MEMORY_DB_FILE, 'utf-8');
-        const memories = JSON.parse(data);
-
-        // Exclude the record matching both the target run ID and the current active user
-        const prunedHistory = memories.filter(m => !(m.id === runId && m.userId === email));
-
-        await fs.writeFile(MEMORY_DB_FILE, JSON.stringify(prunedHistory, null, 2));
-        logger.info(`[Memory] Session ${runId} deleted cleanly for user: ${email}`);
-        return res.status(200).json({ success: true });
-
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
-    }
-});
-/**
- * ⚡ F19: Persistent Operational Run History Directory
+ * ⚡ F19: Persistent Operational Run History Directory (MongoDB Connected)
  */
 app.get('/api/history', async (req, res) => {
     try {
@@ -1133,7 +973,7 @@ app.get('/api/history', async (req, res) => {
 });
 
 /**
- * ⚡ F22: Save Active Pipeline Run Session under User Segment
+ * ⚡ F22: Save Active Pipeline Run Session under User Segment (MongoDB Connected)
  */
 app.post('/api/history/save', async (req, res) => {
     const { email, type, repo, title, prompt, patch, logs, scorecard, files } = req.body;
@@ -1163,7 +1003,7 @@ app.post('/api/history/save', async (req, res) => {
 });
 
 /**
- * ⚡ F23: Segmented Session Fetcher
+ * ⚡ F23: Segmented Session Fetcher (MongoDB Connected)
  */
 app.get('/api/history/user', async (req, res) => {
     const { email } = req.query;
@@ -1178,7 +1018,7 @@ app.get('/api/history/user', async (req, res) => {
 });
 
 /**
- * ⚡ F25: Session Renaming API
+ * ⚡ F25: Session Renaming API (MongoDB Connected)
  */
 app.post('/api/history/rename', async (req, res) => {
     const { email, runId, newTitle } = req.body;
@@ -1205,7 +1045,7 @@ app.post('/api/history/rename', async (req, res) => {
 });
 
 /**
- * ⚡ Deletion API
+ * ⚡ Deletion API (MongoDB Connected)
  */
 app.post('/api/history/delete', async (req, res) => {
     const { email, runId } = req.body;
@@ -1226,9 +1066,7 @@ app.post('/api/history/delete', async (req, res) => {
 });
 
 /**
- * ⚡ F16-Continuation: Progressive Batch Resumer
- * Loads the active session, identifies the next un-built files from the Master Plan, 
- * generates their complete code content (using previous files as context), and commits to Git.
+ * ⚡ F16-Continuation: Progressive Batch Resumer (MongoDB Connected)
  */
 app.post('/api/project/generate/resume', async (req, res) => {
     const { sessionId, token } = req.body;
@@ -1244,20 +1082,17 @@ app.post('/api/project/generate/resume', async (req, res) => {
         const completedPaths = session.files.map(f => f.path);
         const pendingFiles = session.masterPlan.filter(node => !completedPaths.includes(node.path));
 
-        // If no more files remain, update status to completed
         if (pendingFiles.length === 0) {
             session.rolloutStatus = 'completed';
             await session.save();
             return res.status(200).json({ success: true, rolloutStatus: 'completed', files: session.files });
         }
 
-        // Select the next batch of up to 3 files
         const nextBatch = pendingFiles.slice(0, 3);
         const batchToCreate = [];
 
         logger.info(`[Generator] Generating next progressive batch: ${nextBatch.map(f => f.path).join(', ')}`);
 
-        // Compile existing files list as context strings to provide to Qwen
         const existingCodeContext = session.files.map(f => `\n--- File: ${f.path} ---\n${f.content}`).join('\n');
 
         const localClient = clients.localAmd;
@@ -1286,12 +1121,10 @@ Return ONLY raw file code. Do not include markdown code block ticks.
             });
         }
 
-        // Commit newly generated files sequentially to GitHub
-        const repoPath = session.repo; // e.g. "muaviatanveer/my-repo"
+        const repoPath = session.repo;
         for (const file of batchToCreate) {
             const encodedContent = Buffer.from(file.content).toString('base64');
 
-            // Fetch file SHA in case it somehow exists
             let fileSha = null;
             try {
                 const checkRes = await fetch(`https://api.github.com/repos/${repoPath}/contents/${file.path}`, {
@@ -1314,10 +1147,8 @@ Return ONLY raw file code. Do not include markdown code block ticks.
             });
         }
 
-        // Append new files to our database record
         session.files.push(...batchToCreate);
 
-        // Determine if project is fully completed
         const updatedCompletedPaths = session.files.map(f => f.path);
         const totalPlannedPaths = session.masterPlan.map(f => f.path);
         const remaining = totalPlannedPaths.filter(p => !updatedCompletedPaths.includes(p));
