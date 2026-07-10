@@ -1205,9 +1205,8 @@ export default function Dashboard() {
             {/* LEFT SIDEBAR WITH PROFILE AND USER OPERATIONAL HISTORY */}
             <aside className="w-64 border-r border-zinc-800/50 bg-zinc-950/50 flex flex-col hidden lg:flex">
                 <div className="p-5 border-b border-zinc-800/50 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-violet-500 flex items-center justify-center font-bold text-white">
-                        N
-                    </div>
+                    {/* ⚡ UPDATED: Custom Logo Image */}
+                    <img src="/logo.png" alt="NeuroSyn-Dev" className="w-8 h-8 rounded-lg object-cover shadow-lg" />
                     <div>
                         <h1 className="text-sm font-bold text-white tracking-wide">NeuroSyn-Dev</h1>
                         <p className="text-[10px] text-zinc-500 font-mono">OS v1.0.4</p>
