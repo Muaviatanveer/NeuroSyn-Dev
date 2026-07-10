@@ -250,7 +250,6 @@ export default function Dashboard() {
     // --- Google OAuth & User Session States ---
     const [activeUser, setActiveUser] = useState(null); // holds logged-in Google profile
 
-    // Checks for cached sessions or Google Auth hash redirect tokens on boot
     useEffect(() => {
         // 1. Recover session from LocalStorage
         const cachedUser = localStorage.getItem('neurosyn_user');
@@ -273,7 +272,8 @@ export default function Dashboard() {
 
                 const fetchGoogleProfile = async () => {
                     try {
-                        const res = await fetch('https://googleapis.com/oauth2/v3/userinfo', {
+                        // ⚡ FIXED: Added 'www.' to successfully pass Google's CORS and SSL gateway checks
+                        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                             headers: { 'Authorization': `Bearer ${accessToken}` }
                         });
                         const userData = await res.json();
@@ -376,6 +376,7 @@ export default function Dashboard() {
     const commitRunToHistory = async (result, type = "diagnostic", files = []) => {
         if (!activeUser) return;
         try {
+            // ⚡ FIXED: Converted from hardcoded localhost to relative path for live production saves
             await fetch('/api/history/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -390,7 +391,6 @@ export default function Dashboard() {
                     files
                 })
             });
-            loadUserSessions();
         } catch (e) {
             console.warn("Failed to archive session details:", e);
         }
@@ -1995,8 +1995,15 @@ export default function Dashboard() {
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/50"><p className="text-[10px] text-zinc-500 mb-1">Time</p><p className="text-sm text-white font-mono">{runMetrics.time}</p></div>
                                     <div className="bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/50"><p className="text-[10px] text-zinc-500 mb-1">Repairs</p><p className="text-sm text-amber-400 font-mono">{runMetrics.repairs}</p></div>
-                                    <div className="col-span-2 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/50 flex justify-between items-center px-3"><span className="text-[10px] text-zinc-500">Confidence</span><span className="text-sm text-emerald-400 font-mono">{runMetrics.confidence}%</span></div>
-                                </div>
+                                    <div className="col-span-2 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/50 flex justify-between items-center px-3">
+                                        <span className="text-[10px] text-zinc-500 font-mono uppercase">Confidence Score</span>
+                                        {/* ⚡ FIXED: Dynamically multiplies decimal formats to display standard percentages */}
+                                        <span className="text-sm text-emerald-400 font-mono font-bold">
+                                            {runMetrics.confidence < 1
+                                                ? Math.round(runMetrics.confidence * 100)
+                                                : runMetrics.confidence}%
+                                        </span>
+                                    </div>                                </div>
                             </div>
                         )}
                     </div>
