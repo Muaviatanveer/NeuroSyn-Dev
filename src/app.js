@@ -357,7 +357,7 @@ app.post('/api/task/stream', async (req, res) => {
 });
 
 /**
- * Pull request deployment
+ * Pull request deployment (Supports both updates and clean file creations)
  */
 app.post('/api/task/deploy', async (req, res, next) => {
     const { repo, token, patch, description, targetFile } = req.body;
@@ -369,26 +369,42 @@ app.post('/api/task/deploy', async (req, res, next) => {
     try {
         logger.info(`[Deployment] Secure push targeting: ${repo}`);
 
-        const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${targetFile}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        let fileSha = null;
+        try {
+            const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/${targetFile}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
-        if (!fileRes.ok) throw new Error("Target file not found in branch.");
-        const fileData = await fileRes.json();
-        const fileSha = fileData.sha;
+            // ⚡ FIXED: If the file exists, retrieve its SHA to update it. 
+            // If it returns 404, we leave fileSha as null to trigger a new file creation on GitHub.
+            if (fileRes.ok) {
+                const fileData = await fileRes.json();
+                fileSha = fileData.sha;
+                logger.info(`[Deployment] Existing file target detected (SHA: ${fileSha}). Preparing patch update.`);
+            } else {
+                logger.info(`[Deployment] Target file not found. Preparing new file creation on GitHub.`);
+            }
+        } catch (checkError) {
+            logger.warn(`[Deployment] Metadata check bypassed: ${checkError.message}`);
+        }
 
-        const commitMessage = `🔒 NeuroSyn-Dev Sentinel Repair: Fixed vulnerability in ${targetFile}`;
+        const commitMessage = `🔒 NeuroSyn-Dev Sentinel Repair: Setup verified ${targetFile}`;
         const encodedContent = Buffer.from(patch).toString('base64');
 
+        // Execute the PUT request (GitHub creates the file if fileSha is undefined/null)
         const updateRes = await fetch(`https://api.github.com/repos/${repo}/contents/${targetFile}`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: commitMessage, content: encodedContent, sha: fileSha })
+            body: JSON.stringify({
+                message: commitMessage,
+                content: encodedContent,
+                sha: fileSha || undefined // Omit SHA if creating a new file
+            })
         });
 
         if (!updateRes.ok) {
             const errData = await updateRes.json();
-            throw new Error(`GitHub: ${errData.message}`);
+            throw new Error(`GitHub API Error: ${errData.message}`);
         }
 
         await engineeringMemory.saveMemory(commitMessage, patch, repo);
@@ -400,6 +416,7 @@ app.post('/api/task/deploy', async (req, res, next) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 /**
  * endpoint for Feature 2: AI CTO Mode
