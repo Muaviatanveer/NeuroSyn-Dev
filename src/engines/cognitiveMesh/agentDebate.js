@@ -86,7 +86,10 @@ export class CognitiveMeshDebateEngine {
         }
 
         // 3. Spawns specialized multi-agent engineering debate with live streams
-        const synthesizedCode = Object.values(nodeOutputs).find(o => o?.patch)?.patch || '';
+        // ⚡ Node v12 Safe: Removed optional chaining (?.patch)
+        const foundPatchNode = Object.values(nodeOutputs).find(o => o && o.patch);
+        const synthesizedCode = foundPatchNode ? foundPatchNode.patch : '';
+
         const debateTranscript = await this._runMultiAgentDebate(synthesizedCode, plan.metadata, clients, sendStreamData);
 
         return {
@@ -172,7 +175,8 @@ CRITICAL REASONING DIRECTIVES:
             { name: "QA Lead", dimension: "testing", weight: 1.0, focus: "Edge cases coverage, boundary test cases" }
         ];
 
-        const taskType = metadata?.complexity === 'high' ? 'security-vulnerability' : 'bug-fix';
+        // ⚡ Node v12 Safe: Removed optional chaining (metadata?.complexity)
+        const taskType = (metadata && metadata.complexity) === 'high' ? 'security-vulnerability' : 'bug-fix';
         criticPersonas.forEach(persona => {
             if (taskType === 'security-vulnerability' && persona.dimension === 'security') {
                 persona.weight = 1.6;
@@ -187,26 +191,49 @@ CRITICAL REASONING DIRECTIVES:
 Analyze and output a JSON containing strictly:
 {
   "verdict": "ACCEPT" | "REJECT",
-  "score": number, // 0 to 100
+  "score": number,
   "details": "string"
 }`;
 
-            const response = await (clients.localAmd || clients.openai).chat.completions.create({
-                model: clients.models.local.gemma || clients.models.cloud.openai,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: `Evaluate this proposed code patch:\n${codePatch}` }
-                ],
-                response_format: { type: 'json_object' },
-                temperature: 0.1
-            });
+            let parsed;
+            try {
+                // Try Fireworks Cloud first
+                const response = await (clients.fireworks || clients.localAmd).chat.completions.create({
+                    model: (clients.models && clients.models.fireworks) ? clients.models.fireworks.gemma2_9b : 'Qwen/Qwen2.5-Coder-7B-Instruct',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: `Evaluate this proposed code patch:\n${codePatch}` }
+                    ],
+                    response_format: { type: 'json_object' },
+                    temperature: 0.1
+                });
 
-            const parsed = JSON.parse(response.choices[0].message.content);
+                let rawResp = response.choices[0].message.content.trim();
+                rawResp = rawResp.replace(/^```json\s*/i, '').replace(/```\s*$/g, '').trim();
+                parsed = JSON.parse(rawResp);
 
-            // ⚡ REAL-TIME AGENT STREAM: Immediately stream each agent's verdict as it completes!
+            } catch (err) {
+                // Failover to Local AMD GPU
+                logger.warn(`[CognitiveMesh] Cloud Agent Debate failed (${err.message}). Failing over to Local AMD GPU...`);
+                const fallbackResponse = await clients.localAmd.chat.completions.create({
+                    model: 'Qwen/Qwen2.5-Coder-7B-Instruct',
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: `Evaluate this proposed code patch:\n${codePatch}` }
+                    ],
+                    response_format: { type: 'json_object' },
+                    temperature: 0.1
+                });
+
+                // Ensure markdown is stripped from local failover too
+                let rawFallback = fallbackResponse.choices[0].message.content.trim();
+                rawFallback = rawFallback.replace(/^```json\s*/i, '').replace(/```\s*$/g, '').trim();
+                parsed = JSON.parse(rawFallback);
+            }
+
             if (sendStreamData) {
                 sendStreamData('status', {
-                    message: `[CognitiveMesh] Agent "${persona.name}" generated verdict: ${parsed.verdict} (Score: ${parsed.score}%) - "${parsed.details.substring(0, 110)}..."`
+                    message: `[CognitiveMesh] Agent "${persona.name}" generated verdict: ${parsed.verdict} (Score: ${parsed.score}%)`
                 });
             }
 
