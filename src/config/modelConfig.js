@@ -20,7 +20,8 @@ export const MODEL_CONFIG = {
     DEBATER: {
         client: hasFireworks ? 'fireworks' : 'localAmd',
         model: hasFireworks
-            ? 'accounts/fireworks/models/gemma2-9b-it'
+            // ⚡ FIXED: Added correct hyphens to match Fireworks AI's hosted model
+            ? 'accounts/fireworks/models/gemma-2-9b-it'
             : 'Qwen/Qwen2.5-Coder-7B-Instruct',
         description: hasFireworks ? 'Gemma 2 9B on Fireworks (AMD Cloud)' : 'Qwen-Coder 7B on Local vLLM'
     },
