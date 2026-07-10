@@ -157,14 +157,14 @@ ${debateSummary}
     }
 
     /**
-         * Resilient failover LLM dispatcher. Returns the raw string responseText.
-         */
+     * Resilient failover LLM dispatcher.
+     */
     async _callSynthesizerLLM(systemPrompt, userPrompt, clients) {
-        // Optional chaining added to prevent undefined crashes
+        // ⚡ Upgraded dynamic model preference structures using safe Boolean check wrappers
         const clientPreferences = [
-            { configKey: 'localAmd', model: clients.models?.local?.gemma || 'gemma2:27b' },
-            { configKey: 'openai', model: clients.models?.cloud?.openai },
-            { configKey: 'anthropic', model: clients.models?.cloud?.anthropic }
+            { configKey: 'localAmd', model: (clients.models && clients.models.local && clients.models.local.gemma) || 'gemma2:27b' },
+            { configKey: 'openai', model: (clients.models && clients.models.cloud && clients.models.cloud.openai) },
+            { configKey: 'anthropic', model: (clients.models && clients.models.cloud && clients.models.cloud.anthropic) }
         ];
 
         for (const preference of clientPreferences) {

@@ -8,7 +8,9 @@ export class QuantixExecutionPlanner {
         this.clients = clients;
         // Prioritize local AMD ROCm models; fall back to cloud if required
         this.client = clients.localAmd || clients.openai;
-        this.model = clients.models?.local?.gemma || 'gemma2:27b';
+
+        // ⚡ 2A: Upgraded Dynamic Model Resolution
+        this.model = (clients.models && clients.models.local && clients.models.local.gemma) || 'gemma2:27b';
     }
 
     /**
@@ -23,8 +25,10 @@ export class QuantixExecutionPlanner {
 
         // Dynamically shift compute to top-tier local model, fallback to cloud if mapped
         const activeClient = isHighComplexity ? (this.clients.openai || this.client) : this.client;
+
+        // ⚡ 2B: Upgraded Dynamic Cloud Model Resolution
         const activeModel = isHighComplexity
-            ? (this.clients.models?.cloud?.openai || this.clients.models?.local?.gemma || 'gemma2:27b')
+            ? ((this.clients.models && this.clients.models.cloud && this.clients.models.cloud.openai) || (this.clients.models && this.clients.models.local && this.clients.models.local.gemma) || 'gemma2:27b')
             : this.model;
 
         logger.info(`[Quantix] ⚙️ Building execution planner DAG using model: ${activeModel}`);

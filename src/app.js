@@ -61,7 +61,8 @@ Return ONLY a valid JSON object matching this schema:
 
         const localClient = clients.localAmd;
         const response = await localClient.chat.completions.create({
-            model: clients.models?.local?.gemma || 'gemma2:27b',
+            // ⚡ 1A: Upgraded Dynamic Model Resolution
+            model: (clients.models && clients.models.local && clients.models.local.gemma) || 'gemma2:27b',
             messages: [{ role: 'system', content: prompt }],
             response_format: { type: 'json_object' },
             temperature: 0.2
@@ -288,13 +289,17 @@ app.post('/api/task/stream', async (req, res) => {
                 });
             }
 
-            // Full Success Dispatch
+            // Full Success Dispatch with Dynamic Verdict Fallback Guard
             sendStreamData('complete', {
                 result: {
                     ...result,
                     success: true,
                     repoUrl: repoData.html_url,
-                    files: generatedFiles
+                    files: generatedFiles,
+                    // ⚡ 1C: Upgraded Debate Verdicts Coercion
+                    debateSummary: {
+                        verdicts: (result && result.debateSummary && result.debateSummary.verdicts) || []
+                    }
                 }
             });
 
@@ -319,13 +324,25 @@ app.post('/api/task/stream', async (req, res) => {
                     ...result,
                     success: false,
                     error: `GitHub Push Blocked: ${deployError.message}. Code compiled successfully locally inside browser workspace.`,
-                    files: safeFiles
+                    files: safeFiles,
+                    // ⚡ 1C: Upgraded Debate Verdicts Coercion Fallback
+                    debateSummary: {
+                        verdicts: (result && result.debateSummary && result.debateSummary.verdicts) || []
+                    }
                 }
             });
         }
     } else {
         // Standard diagnostic run completion (Tab 1)
-        sendStreamData('complete', { result });
+        sendStreamData('complete', {
+            result: {
+                ...result,
+                // ⚡ 1C: Upgraded Debate Verdicts Coercion Fallback
+                debateSummary: {
+                    verdicts: (result && result.debateSummary && result.debateSummary.verdicts) || []
+                }
+            }
+        });
     }
 
     res.end();
@@ -532,7 +549,9 @@ app.post('/api/memory/search', async (req, res) => {
     try {
         // Resolve dynamic module wrappers if bundlers nested the instance
         const memoryModule = engineeringMemory.default || engineeringMemory;
-        const searchFunction = memoryModule.searchMemory.bind(memoryModule);
+
+        // ⚡ 1B: Upgraded Dynamic Module Search Extractor
+        const searchFunction = (memoryModule.searchMemory || (memoryModule.default && memoryModule.default.searchMemory)).bind(memoryModule.default || memoryModule);
 
         const memory = await searchFunction(task);
         res.json({ memory });
