@@ -1,7 +1,12 @@
 // frontend/src/pages/Login.js
 
 import React, { useState, useEffect } from 'react';
-
+const SectionHeader = ({ title }) => (
+    <h2 className="text-xs font-semibold text-zinc-400 tracking-wider uppercase mb-4 flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+        {title}
+    </h2>
+);
 export default function Login({ onLoginSuccess }) {
     // Statistics State
     const [stats, setStats] = useState({ repos: 0, prs: 0, issues: 0, decisions: 0 });
