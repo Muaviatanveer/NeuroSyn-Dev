@@ -1919,7 +1919,7 @@ export default function Dashboard() {
                                 {[
                                     { name: 'Gemma 27B', role: 'Planning', status: isActiveStageSelector('routing') && !isCurrentStageSelector('completed') ? 'Running' : (isCurrentStageSelector('completed') ? 'Completed' : 'Idle'), color: 'text-cyan-400' },
                                     { name: 'Qwen Coder 7B', role: 'Code Generation', status: isCurrentStageSelector('coding') || isCurrentStageSelector('testing') ? 'Running' : (isActiveStageSelector('review') ? 'Completed' : 'Idle'), color: 'text-emerald-400' },
-                                    { name: 'Claude 3.5', role: 'Security Review', status: isCurrentStageSelector('review') ? 'Running' : (isCurrentStageSelector('completed') ? 'Completed' : 'Waiting'), color: 'text-violet-400' },
+                                    { name: 'Gemma 2 9B', role: 'Security Review', status: isCurrentStageSelector('review') ? 'Running' : (isCurrentStageSelector('completed') ? 'Completed' : 'Waiting'), color: 'text-violet-400' },
                                 ].map((model, i) => (
                                     <div key={i} className="flex justify-between items-center text-xs bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/50">
                                         <div>
