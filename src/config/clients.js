@@ -7,8 +7,6 @@ logger.info('Initializing NeuroSyn-Dev Adaptive Client Fabric...');
 
 const clients = {};
 
-// --- 1. Local AMD GPU vLLM Server (ROCm Powered, Free, Unlimited) ---
-// Points directly to the vLLM server running on your JupyterLab AMD GPU
 const localApiBase = process.env.AMD_LOCAL_API_BASE || 'http://127.0.0.1:8000/v1';
 const localApiKey = process.env.AMD_LOCAL_API_KEY || 'vllm-token';
 
@@ -19,11 +17,13 @@ clients.localAmd = new OpenAI({
 });
 logger.info(`✅ Local AMD ROCm interface mapped to: ${localApiBase}`);
 
-// --- 2. Fireworks AI (AMD-Hardware Hosted Gemma Models) ---
-const hasFireworks = !!process.env.FIREWORKS_API_KEY;
+// --- 2. Fireworks AI (Google Gemma Models Hosted on Fireworks) ---
+const rawKey = process.env.FIREWORKS_API_KEY;
+const hasFireworks = !!rawKey && rawKey.trim() !== "";
+
 if (hasFireworks) {
     clients.fireworks = new OpenAI({
-        apiKey: process.env.FIREWORKS_API_KEY,
+        apiKey: rawKey.trim(), // ⚡ Safety: Explicitly trim whitespaces/newlines from Render env
         baseURL: 'https://api.fireworks.ai/inference/v1'
     });
     logger.info('📡 Connection Available: Fireworks AI on AMD Hardware is online.');
@@ -38,9 +38,9 @@ clients.openai = hasFireworks ? clients.fireworks : clients.localAmd;
 // --- 4. Model Registry ---
 clients.models = {
     fireworks: {
-        // ⚡ FIXED: Restored correct Fireworks namespace and un-hyphenated gemma2 name
-        gemma2_9b: 'accounts/fireworks/models/gemma2-9b-it',
-        gemma2_27b: 'accounts/fireworks/models/gemma-2-27b-it'
+        // ⚡ FIXED: Standardized Fireworks namespaces to use Google's official identifier endpoints
+        gemma2_9b: 'accounts/google/models/gemma2-9b-it',
+        gemma2_27b: 'accounts/google/models/gemma2-27b-it'
     },
     local: {
         qwenCoder: 'Qwen/Qwen2.5-Coder-7B-Instruct',

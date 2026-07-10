@@ -1,17 +1,13 @@
 // AMD/src/config/modelConfig.js
 
-const hasFireworks = !!process.env.FIREWORKS_API_KEY;
+const hasFireworks = !!process.env.FIREWORKS_API_KEY && process.env.FIREWORKS_API_KEY.trim() !== "";
 
-/**
- * central adaptive model mapping for NeuroSyn-Dev.
- * Configured specifically for your AMD GPU vLLM server and Fireworks API.
- */
 export const MODEL_CONFIG = {
     // Dynamic Problem Planning Engine (Quantix)
     PLANNER: {
         client: hasFireworks ? 'fireworks' : 'localAmd',
         model: hasFireworks
-            ? 'accounts/fireworks/models/gemma-2-27b-it'
+            ? 'accounts/google/models/gemma2-27b-it' // ⚡ Updated
             : 'Qwen/Qwen2.5-Coder-7B-Instruct',
         description: hasFireworks ? 'Gemma 2 27B on Fireworks (AMD Cloud)' : 'Qwen-Coder 7B on Local vLLM'
     },
@@ -20,13 +16,12 @@ export const MODEL_CONFIG = {
     DEBATER: {
         client: hasFireworks ? 'fireworks' : 'localAmd',
         model: hasFireworks
-            // ⚡ FIXED: Restored correct Fireworks namespace and un-hyphenated gemma2 name
-            ? 'accounts/fireworks/models/gemma2-9b-it'
+            ? 'accounts/google/models/gemma2-9b-it' // ⚡ Updated
             : 'Qwen/Qwen2.5-Coder-7B-Instruct',
         description: hasFireworks ? 'Gemma 2 9B on Fireworks (AMD Cloud)' : 'Qwen-Coder 7B on Local vLLM'
     },
 
-    // Sandbox Execution Coder (Cognitive Mesh Sandbox) - Runs completely free on your AMD GPU
+    // Sandbox Execution Coder (Cognitive Mesh Sandbox)
     CODER: {
         client: 'localAmd',
         model: 'Qwen/Qwen2.5-Coder-7B-Instruct',

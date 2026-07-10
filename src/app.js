@@ -8,7 +8,8 @@ import synapseFabric from './core/synapseFabric.js';
 import clients from './config/clients.js';
 import logger from './utils/logger.js';
 import engineeringMemory from './core/engineeringMemory.js';
-
+import { connectDB, UserSession } from './config/db.js';
+connectDB();
 const app = express();
 const MEMORY_DB_FILE = path.join(process.cwd(), 'memory.db.json');
 
@@ -1054,6 +1055,10 @@ app.get('/api/config/google', (req, res) => {
     res.json({ clientId: process.env.GOOGLE_CLIENT_ID || '' });
 });
 
+app.get('/api/config/github', (req, res) => {
+    res.json({ clientId: process.env.GITHUB_CLIENT_ID || '' });
+});
+
 /**
  * ⚡ F25: Session Renaming API
  * Updates the custom descriptive title of an archived workspace session.
@@ -1099,6 +1104,110 @@ app.post('/api/history/delete', async (req, res) => {
         logger.info(`[Memory] Session ${runId} deleted cleanly for user: ${email}`);
         return res.status(200).json({ success: true });
 
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+/**
+ * ⚡ F19: Persistent Operational Run History Directory
+ */
+app.get('/api/history', async (req, res) => {
+    try {
+        const memories = await UserSession.find({}).sort({ date: -1 }).lean();
+        return res.status(200).json({ history: memories });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * ⚡ F22: Save Active Pipeline Run Session under User Segment
+ */
+app.post('/api/history/save', async (req, res) => {
+    const { email, type, repo, title, prompt, patch, logs, scorecard, files } = req.body;
+    if (!email) return res.status(400).json({ error: "Active user required to commit memory." });
+
+    try {
+        const newRun = new UserSession({
+            id: `RUN-${Date.now()}`,
+            userId: email,
+            type: type || 'diagnostic',
+            date: new Date(),
+            repo: repo || 'Local Target Execution',
+            title: title || 'Autonomous Resolution',
+            prompt,
+            patch,
+            logs,
+            scorecard: scorecard || { security: 95, performance: 90, compositeConfidence: 92 },
+            files: files || []
+        });
+
+        await newRun.save();
+        logger.info(`[Memory] Session successfully saved under user profile: ${email}`);
+        return res.status(200).json({ success: true, session: newRun });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * ⚡ F23: Segmented Session Fetcher
+ */
+app.get('/api/history/user', async (req, res) => {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: "User Email query parameter is required." });
+
+    try {
+        const userHistory = await UserSession.find({ userId: email }).sort({ date: -1 }).lean();
+        return res.status(200).json({ history: userHistory });
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * ⚡ F25: Session Renaming API
+ */
+app.post('/api/history/rename', async (req, res) => {
+    const { email, runId, newTitle } = req.body;
+    if (!email || !runId || !newTitle) {
+        return res.status(400).json({ error: "Missing parameters for renaming operation." });
+    }
+
+    try {
+        const targetSession = await UserSession.findOneAndUpdate(
+            { id: runId, userId: email },
+            { title: newTitle },
+            { new: true }
+        );
+
+        if (targetSession) {
+            logger.info(`[Memory] Session ${runId} successfully renamed to: "${newTitle}"`);
+            return res.status(200).json({ success: true });
+        }
+
+        throw new Error("Archived session not found under this user account.");
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * ⚡ Deletion API
+ */
+app.post('/api/history/delete', async (req, res) => {
+    const { email, runId } = req.body;
+    if (!email || !runId) {
+        return res.status(400).json({ error: "Missing parameters for deletion operation." });
+    }
+
+    try {
+        const result = await UserSession.findOneAndDelete({ id: runId, userId: email });
+        if (result) {
+            logger.info(`[Memory] Session ${runId} deleted cleanly for user: ${email}`);
+            return res.status(200).json({ success: true });
+        }
+        throw new Error("Session not found or unauthorized to delete.");
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }

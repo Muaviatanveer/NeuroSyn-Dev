@@ -1,21 +1,12 @@
-import fs from 'fs/promises';
-import path from 'path';
+// AMD/src/core/engineeringMemory.js
+
+import { UserSession } from '../config/db.js';
 import logger from '../utils/logger.js';
 
-const MEMORY_FILE = path.join(process.cwd(), 'memory.db.json');
-
 export class EngineeringMemory {
-    async _ensureDb() {
-        try {
-            await fs.access(MEMORY_FILE);
-        } catch {
-            await fs.writeFile(MEMORY_FILE, JSON.stringify([]));
-        }
-    }
 
     // 100% Real string similarity calculation (Jaccard Index)
     _calculateSimilarity(str1, str2) {
-        // ⚡ Absolute String Coercion Guard: Maps both string fields and nested object shapes safely
         const s1 = typeof str1 === 'string'
             ? str1
             : (str1 && typeof str1 === 'object' ? (str1.prompt || str1.task || '') : '');
@@ -24,7 +15,6 @@ export class EngineeringMemory {
             ? str2
             : (str2 && typeof str2 === 'object' ? (str2.prompt || str2.task || '') : '');
 
-        // Coerce completely to String objects to isolate .toLowerCase() calls
         const finalS1 = String(s1);
         const finalS2 = String(s2);
 
@@ -38,21 +28,56 @@ export class EngineeringMemory {
         return Math.round((intersection.size / union.size) * 100);
     }
 
+    /**
+     * Searches persistent MongoDB storage for highly similar engineering tasks 
+     * to inject into the planner as template guides.
+     */
+    async searchMemory(taskDescription) {
+        try {
+            // Retrieve past runs from MongoDB
+            const memories = await UserSession.find({}).lean();
+            if (memories.length === 0) return null;
+
+            let highestSimilarity = 0;
+            let bestMatch = null;
+
+            for (const mem of memories) {
+                const sim = this._calculateSimilarity(taskDescription, mem.prompt);
+                if (sim > highestSimilarity && sim >= 50) { // 50% matching threshold
+                    highestSimilarity = sim;
+                    bestMatch = {
+                        id: mem.id,
+                        task: mem.prompt,
+                        patch: mem.patch,
+                        similarity: sim
+                    };
+                }
+            }
+            return bestMatch;
+        } catch (error) {
+            logger.error(`[Memory] Search query over MongoDB aborted: ${error.message}`);
+            return null;
+        }
+    }
+
     async saveMemory(task, patch, repo) {
-        await this._ensureDb();
-        const data = await fs.readFile(MEMORY_FILE, 'utf-8');
-        const memories = JSON.parse(data);
+        try {
+            const newMem = new UserSession({
+                id: `MEM-${Date.now()}`,
+                userId: 'system-agent@neurosyn.com', // System-level trace marker
+                type: 'diagnostic',
+                repo: repo || 'Local Target Execution',
+                title: 'System Synthesized Resolution',
+                prompt: task,
+                patch: patch,
+                logs: 'Auto-compiled via CLI memory save.'
+            });
 
-        memories.push({
-            id: `MEM-${Date.now()}`,
-            date: new Date().toISOString(),
-            repo,
-            task,
-            patch
-        });
-
-        await fs.writeFile(MEMORY_FILE, JSON.stringify(memories, null, 2));
-        logger.info(`[Memory] Institutional knowledge saved. DB size: ${memories.length} records.`);
+            await newMem.save();
+            logger.info('[Memory] Institutional knowledge saved persistently to MongoDB.');
+        } catch (error) {
+            logger.error(`[Memory] Persistent save aborted: ${error.message}`);
+        }
     }
 }
 
