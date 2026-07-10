@@ -329,12 +329,4 @@ Analyze and output a JSON containing strictly:
     }
 }
 
-// Dynamic fallback import resolver
-let codeExecutor = null;
-import('../../services/codeExecutorService.js').then(module => {
-    codeExecutor = module.default;
-}).catch(e => {
-    logger.warn("[CognitiveMesh] codeExecutorService loading delayed.");
-});
-
 export default new CognitiveMeshDebateEngine();
