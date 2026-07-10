@@ -12,6 +12,10 @@ import engineeringMemory from './core/engineeringMemory.js';
 const app = express();
 const MEMORY_DB_FILE = path.join(process.cwd(), 'memory.db.json');
 
+// Serve the compiled React frontend directly from the static build folder
+const frontendBuildPath = path.join(process.cwd(), 'frontend/build');
+app.use(express.static(frontendBuildPath));
+
 app.use(cors());
 app.use(express.json());
 
@@ -1061,6 +1065,11 @@ app.post('/api/history/delete', async (req, res) => {
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
+});
+
+// Wildcard fallback: Redirects any standard page requests to the React SPA index
+app.get(/^(?!\/api).*$/, (req, res) => {
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
 });
 
 export default app;
