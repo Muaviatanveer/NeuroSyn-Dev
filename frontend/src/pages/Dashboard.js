@@ -666,112 +666,128 @@ export default function Dashboard() {
 
         try {
             const response = await fetch('/api/task/stream', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task: taskInput, options: { strategy: chosenStrategy } })
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ task: taskInput, options: { strategy: chosenStrategy } })
             });
 
             if (!response.body) throw new Error("ReadableStream not supported by browser.");
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
 
+            // ⚡ SSE Buffer Aggregator to prevent JSON slicing across packets
+            let buffer = '';
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
-                const lines = chunk.split('\n\n');
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+
+                // Keep the last partial line in the buffer
+                buffer = lines.pop() || '';
 
                 for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        const dataStr = line.replace('data: ', '');
-                        try {
-                            const data = JSON.parse(dataStr);
-                            if (data.type === 'status') {
-                                addLog(data.message, 'info');
-                                if (data.message.includes('Engine 1')) setPipelineState('analyze');
-                                if (data.message.includes('Engine 2')) setPipelineState('routing');
-                                if (data.message.includes('Engine 4')) setPipelineState('coding');
-                                if (data.message.includes('tests passed') || data.message.includes('sandbox') || data.message.includes('compilation')) setPipelineState('testing');
-                                if (data.message.includes('Critic')) setPipelineState('review');
-                            } else if (data.type === 'error') {
-                                addLog(data.message, 'error');
-                                throw new Error(data.message);
-                            } else if (data.type === 'complete') {
-                                const result = data.result;
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine || !trimmedLine.startsWith('data: ')) continue;
 
-                                setRunMetrics({
-                                    time: (result.durationMs / 1000).toFixed(1) + 's',
-                                    repairs: result.selfHealed ? 1 : 0,
-                                    confidence: result.scorecard?.compositeConfidence || 92
-                                });
+                    const dataStr = trimmedLine.replace(/^data:\s*/, '');
+                    try {
+                        const data = JSON.parse(dataStr);
 
-                                setAnalysis({ complexity: result.scorecard?.complexity || 'high', goal: "Resolve reported issue" });
-                                setRoutingTable({
-                                    "PLANNER": { source: "LOCAL_AMD", model: "gemma2:27b" },
-                                    "CODER": { source: "LOCAL_AMD", model: "qwen2.5-coder:7b" },
-                                    "DEBATER": { source: "LOCAL_AMD", model: "gemma2:27b" }
-                                });
+                        if (data.type === 'status') {
+                            addLog(data.message, 'info');
+                            if (data.message.includes('Engine 1')) setPipelineState('analyze');
+                            if (data.message.includes('Engine 2')) setPipelineState('routing');
+                            if (data.message.includes('Engine 4')) setPipelineState('coding');
+                            if (data.message.includes('tests passed') || data.message.includes('sandbox') || data.message.includes('compilation')) setPipelineState('testing');
+                            if (data.message.includes('Critic')) setPipelineState('review');
+                        } else if (data.type === 'error') {
+                            addLog(data.message, 'error');
+                            throw new Error(data.message);
+                        } else if (data.type === 'complete') {
+                            const result = data.result;
 
-                                setDebate({
-                                    verdicts: result.debateSummary?.verdicts || [
-                                        { agent: "Security Auditor", score: result.scorecard?.security || 94, verdict: "ACCEPT", details: "Architecture is mathematically verified." },
-                                        { agent: "Software Architect", score: result.scorecard?.maintainability || 92, verdict: "ACCEPT", details: "Zero structural leaks found." }
-                                    ],
-                                    compositeScore: result.scorecard?.compositeConfidence || 92
-                                });
+                            setRunMetrics({
+                                time: (result.durationMs / 1000).toFixed(1) + 's',
+                                repairs: result.selfHealed ? 1 : 0,
+                                confidence: result.scorecard?.compositeConfidence || 92
+                            });
 
-                                // ⚡ STRENGTHENED TYPE GUARD: Coerce fields safely to prevent undefined .replace() exceptions
-                                let rawDesc = extractJsonField(result.prDescription, 'prDescription');
-                                let rawPatch = extractJsonField(result.prDescription, 'verifiedPatch');
+                            setAnalysis({ complexity: result.scorecard?.complexity || 'high', goal: "Resolve reported issue" });
+                            setRoutingTable({
+                                "PLANNER": { source: "LOCAL_AMD", model: "gemma2:27b" },
+                                "CODER": { source: "LOCAL_AMD", model: "qwen2.5-coder:7b" },
+                                "DEBATER": { source: "LOCAL_AMD", model: "gemma2:27b" }
+                            });
 
-                                if (rawDesc === result.prDescription) rawDesc = formatText(result.prDescription);
-                                if (rawPatch === result.prDescription) rawPatch = formatText(result.verifiedPatch);
+                            setDebate({
+                                verdicts: result.debateSummary?.verdicts || [
+                                    { agent: "Security Auditor", score: result.scorecard?.security || 94, verdict: "ACCEPT", details: "Architecture is mathematically verified." },
+                                    { agent: "Software Architect", score: result.scorecard?.maintainability || 92, verdict: "ACCEPT", details: "Zero structural leaks found." }
+                                ],
+                                compositeScore: result.scorecard?.compositeConfidence || 92
+                            });
 
-                                const cleanDesc = typeof rawDesc === 'string' ? rawDesc : "";
-                                let cleanPatch = typeof rawPatch === 'string' ? rawPatch : "";
+                            // Coerce fields safely
+                            let rawDesc = extractJsonField(result.prDescription, 'prDescription');
+                            let rawPatch = extractJsonField(result.prDescription, 'verifiedPatch');
 
-                                // Safely remove markdown tags
-                                cleanPatch = cleanPatch.replace(/```[a-zA-Z]*\n/g, '').replace(/```/g, '').trim();
+                            if (rawDesc === result.prDescription) rawDesc = formatText(result.prDescription);
+                            if (rawPatch === result.prDescription) rawPatch = formatText(result.verifiedPatch);
 
-                                // Populate the IDE workspace
-                                if (result.files && result.files.length > 0) {
-                                    setGeneratedProjectFiles(result.files);
-                                    setViewingFile(result.files[0]);
-                                } else if (cleanPatch) {
-                                    // Fallback if no files array was mapped
-                                    setGeneratedProjectFiles([
-                                        { path: "src/main.py", content: cleanPatch },
-                                        { path: "README.md", content: "# Compiled Project\nLocal compilation completed successfully." }
-                                    ]);
-                                    setViewingFile({ path: "src/main.py", content: cleanPatch });
-                                }
+                            const cleanDesc = typeof rawDesc === 'string' ? rawDesc : "";
+                            let cleanPatch = typeof rawPatch === 'string' ? rawPatch : "";
 
-                                setPipelineState('completed');
-                                setGeneratingProject(false);
+                            cleanPatch = cleanPatch.replace(/```[a-zA-Z]*\n/g, '').replace(/```/g, '').trim();
 
-                                const upgradedDescription = `${cleanDesc}
+                            // Populate workspace files
+                            if (result.files && result.files.length > 0) {
+                                setGeneratedProjectFiles(result.files);
+                                setViewingFile(result.files[0]);
+                            } else if (cleanPatch) {
+                                setGeneratedProjectFiles([
+                                    { path: "src/main.py", content: cleanPatch },
+                                    { path: "README.md", content: "# Compiled Project\nLocal compilation completed successfully." }
+                                ]);
+                                setViewingFile({ path: "src/main.py", content: cleanPatch });
+                            }
+
+                            setPipelineState('completed');
+                            setGeneratingProject(false);
+
+                            const upgradedDescription = `${cleanDesc}
 
 ---
 ### 🛡️ NeuroSyn-Dev Sentinel Quality Shield Upgraded
 - Codebase scanned proactively for vulnerabilities.
 - Verified patch compiled and deployed cleanly.`;
 
-                                setSynthesizedResult({
-                                    verifiedPatch: cleanPatch,
-                                    prDescription: upgradedDescription,
-                                    counterfactual: result.counterfactualAnalysis
-                                });
+                            setSynthesizedResult({
+                                verifiedPatch: cleanPatch,
+                                prDescription: upgradedDescription,
+                                counterfactual: result.counterfactualAnalysis
+                            });
 
-                                if (result.success) {
-                                    addTimeline("Git Commit Pushed");
-                                    addLog("Greenfield system compiled, verified, and committed successfully to Git!", "success");
-                                    setCreatedRepoUrl(result.repoUrl);
-                                } else {
-                                    addTimeline("Git Push Blocked");
-                                    addLog(`Warning: Code compiled locally but remote push was blocked: ${result.error}`, "warn");
-                                    setIdeError(result.error);
-                                }
+                            if (result.success) {
+                                addTimeline("Git Commit Pushed");
+                                addLog("Greenfield system compiled, verified, and committed successfully to Git!", "success");
+                                setCreatedRepoUrl(result.repoUrl);
+                            } else {
+                                addTimeline("Git Push Blocked");
+                                addLog(`Warning: Code compiled locally but remote push was blocked: ${result.error}`, "warn");
+                                setIdeError(result.error);
                             }
-                        } catch (err) { }
+
+                            // ⚡ FIX 1: Commit session to history database upon Diagnostic Run completion
+                            commitRunToHistory({
+                                verifiedPatch: cleanPatch,
+                                prDescription: upgradedDescription
+                            }, "diagnostic", result.files || []);
+                        }
+                    } catch (err) {
+                        console.error("[Stream Parser Error]: Failed parsing stream chunk:", err, dataStr);
                     }
                 }
             }
