@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import Login from './Login';
 
@@ -56,6 +55,57 @@ export default function Dashboard() {
     // --- Inline Renaming & Editing States ---
     const [editingRunId, setEditingRunId] = useState(null);
     const [editingTitleText, setEditingRunTitle] = useState('');
+
+    // --- STRATEGY MODE STATES (F1) ---
+    const [strategyBrief, setStrategyBrief] = useState(null);
+    const [chosenStrategy, setChosenStrategy] = useState(null);
+    const [loadingStrategy, setLoadingStrategy] = useState(false);
+
+    // --- ENGINE MAPPINGS ---
+    const [analysis, setAnalysis] = useState(null);
+    const [routingTable, setRoutingTable] = useState(null);
+    const [debate, setDebate] = useState(null);
+    const [synthesizedResult, setSynthesizedResult] = useState(null);
+
+    // --- DEPLOYMENT & METRICS ---
+    const [runMetrics, setRunMetrics] = useState(null);
+    const [deployStatus, setDeployStatus] = useState('idle');
+
+    // --- GREENFIELD IDE STATES (F16) ---
+    const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'projects', 'history'
+    const [projectPrompt, setProjectPrompt] = useState('');
+    const [generatingProject, setGeneratingProject] = useState(false);
+    const [rolloutStatus, setRolloutStatus] = useState('idle'); // idle, paused, completed
+    const [activeSessionId, setActiveSessionId] = useState(null);
+    const [generatedProjectFiles, setGeneratedProjectFiles] = useState([]);
+    const [viewingFile, setViewingFile] = useState(null);
+    const [createdRepoUrl, setCreatedRepoUrl] = useState('');
+    const [ideError, setIdeError] = useState(null);
+    const [expandedFolders, setExpandedFolders] = useState({});
+
+    // --- MULTI-OBJECTIVE OPTIMIZER SLIDERS (F5) ---
+    const [objectives, setObjectives] = useState({
+        performance: 80,
+        security: 90,
+        maintainability: 60,
+        cost: 20,
+        speed: 50
+    });
+
+    // --- ENGINEERING MEMORY (F9) ---
+    const [memoryAlert, setMemoryAlert] = useState(null);
+
+    // --- ANALYTICS INSIGHTS (F11, F12, F15) ---
+    const [analyticsData, setAnalyticsData] = useState(null);
+
+    // --- SOCIAL OAUTH & HISTORY STATES ---
+    const [githubUser, setGithubUser] = useState(null);
+    const [pastRuns, setPastRuns] = useState([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+
+    // --- Google OAuth & User Session States ---
+    const [activeUser, setActiveUser] = useState(null); // holds logged-in Google profile
+
     useEffect(() => {
         const fetchGithubConfig = async () => {
             try {
@@ -68,6 +118,7 @@ export default function Dashboard() {
         };
         fetchGithubConfig();
     }, []);
+
     // ⚡ FEATURE: Zero-dependency Lexical Syntax Highlighter for multi-language colors
     const colorizeCode = (code, filePath = '') => {
         if (!code) return '';
@@ -213,54 +264,6 @@ export default function Dashboard() {
         }
     };
 
-    // --- STRATEGY MODE STATES (F1) ---
-    const [strategyBrief, setStrategyBrief] = useState(null);
-    const [chosenStrategy, setChosenStrategy] = useState(null);
-    const [loadingStrategy, setLoadingStrategy] = useState(false);
-
-    // --- ENGINE MAPPINGS ---
-    const [analysis, setAnalysis] = useState(null);
-    const [routingTable, setRoutingTable] = useState(null);
-    const [debate, setDebate] = useState(null);
-    const [synthesizedResult, setSynthesizedResult] = useState(null);
-
-    // --- DEPLOYMENT & METRICS ---
-    const [runMetrics, setRunMetrics] = useState(null);
-    const [deployStatus, setDeployStatus] = useState('idle');
-
-    // --- GREENFIELD IDE STATES (F16) ---
-    const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'projects', 'history'
-    const [projectPrompt, setProjectPrompt] = useState('');
-    const [generatingProject, setGeneratingProject] = useState(false);
-    const [generatedProjectFiles, setGeneratedProjectFiles] = useState([]);
-    const [viewingFile, setViewingFile] = useState(null);
-    const [createdRepoUrl, setCreatedRepoUrl] = useState('');
-    const [ideError, setIdeError] = useState(null);
-    const [expandedFolders, setExpandedFolders] = useState({});
-
-    // --- MULTI-OBJECTIVE OPTIMIZER SLIDERS (F5) ---
-    const [objectives, setObjectives] = useState({
-        performance: 80,
-        security: 90,
-        maintainability: 60,
-        cost: 20,
-        speed: 50
-    });
-
-    // --- ENGINEERING MEMORY (F9) ---
-    const [memoryAlert, setMemoryAlert] = useState(null);
-
-    // --- ANALYTICS INSIGHTS (F11, F12, F15) ---
-    const [analyticsData, setAnalyticsData] = useState(null);
-
-    // --- SOCIAL OAUTH & HISTORY STATES ---
-    const [githubUser, setGithubUser] = useState(null);
-    const [pastRuns, setPastRuns] = useState([]);
-    const [loadingHistory, setLoadingHistory] = useState(false);
-
-    // --- Google OAuth & User Session States ---
-    const [activeUser, setActiveUser] = useState(null); // holds logged-in Google profile
-
     useEffect(() => {
         // 1. Recover session from LocalStorage
         const cachedUser = localStorage.getItem('neurosyn_user');
@@ -283,7 +286,6 @@ export default function Dashboard() {
 
                 const fetchGoogleProfile = async () => {
                     try {
-                        // ⚡ FIXED: Added 'www.' to successfully pass Google's CORS and SSL gateway checks
                         const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                             headers: { 'Authorization': `Bearer ${accessToken}` }
                         });
@@ -387,7 +389,6 @@ export default function Dashboard() {
     const commitRunToHistory = async (result, type = "diagnostic", files = []) => {
         if (!activeUser) return;
         try {
-            // ⚡ FIXED: Converted from hardcoded localhost to relative path for live production saves
             await fetch('/api/history/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -791,7 +792,7 @@ export default function Dashboard() {
                                 setIdeError(result.error);
                             }
 
-                            // ⚡ FIX 1: Commit session to history database upon Diagnostic Run completion
+                            // ⚡ Commit session to history database upon Diagnostic Run completion
                             commitRunToHistory({
                                 verifiedPatch: cleanPatch,
                                 prDescription: upgradedDescription
@@ -809,13 +810,15 @@ export default function Dashboard() {
         }
     };
 
-    // --- UNIFIED COGNITIVE GREENFIELD PIPELINE (Resilient Stream Parsing) ---
+    // --- UNIFIED COGNITIVE GREENFIELD PIPELINE (Robust Async Version) ---
     const launchGreenfieldPipeline = async () => {
         if (!projectPrompt.trim()) return;
         setGeneratingProject(true);
         setCreatedRepoUrl('');
         setIdeError(null);
         setConsoleLogs([]);
+        setRolloutStatus('idle');
+        setActiveSessionId(null);
 
         // ==========================================
         // MODE A: IMPORT & MODIFY EXISTING REPO
@@ -903,7 +906,7 @@ export default function Dashboard() {
             }
         }
         // ==========================================
-        // MODE B: START FROM SCRATCH (Corrected Async JSON Fetch)
+        // MODE B: START FROM SCRATCH (Progressive Batch Mode)
         // ==========================================
         else {
             setPipelineState('analyze');
@@ -915,24 +918,25 @@ export default function Dashboard() {
 
             addTimeline("Ingesting Greenfield Prompt");
             addLog(`Initiating Cognitive Greenfield Creation: "${projectPrompt}"`, 'warn');
-            addLog("Analyzing code requirements and compiling dependency blueprints...", "info");
-            addLog("Invoking local Qwen-Coder to construct repository files inside sandbox... (~1 min)", "info");
+            addLog("Planning codebase blueprints and file dependencies...", "info");
+            addLog("Executing first progressive batch generation (up to 3 files)... Please wait (~1 min)", "info");
 
             try {
-                // ⚡ FIX: Map keys directly at the root of the body JSON
+                // Submit un-nested request
                 const response = await fetch('/api/project/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         prompt: projectPrompt,
-                        token: githubToken
+                        token: githubToken,
+                        email: activeUser?.email
                     })
                 });
 
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.error || "Project generation returned an operational error.");
+                    throw new Error(result.error || "Project generation returned an error.");
                 }
 
                 setRunMetrics({
@@ -941,7 +945,7 @@ export default function Dashboard() {
                     confidence: 94
                 });
 
-                setAnalysis({ complexity: 'high', goal: "Architect stand-alone software solution" });
+                setAnalysis({ complexity: 'high', goal: "Architect progressive software solution" });
                 setRoutingTable({
                     "PLANNER": { source: "LOCAL_AMD", model: "Qwen/Qwen2.5-Coder-7B-Instruct" },
                     "CODER": { source: "LOCAL_AMD", model: "Qwen/Qwen2.5-Coder-7B-Instruct" },
@@ -956,7 +960,6 @@ export default function Dashboard() {
                     compositeScore: 94
                 });
 
-                addLog("Executing sandbox compilation checks on local AMD ROCm hardware...", "info");
                 addLog("✓ Code compiles and verifies successfully. Sandbox checks complete.", "success");
 
                 // Populate workspace tree
@@ -967,13 +970,14 @@ export default function Dashboard() {
 
                 setPipelineState('completed');
                 setGeneratingProject(false);
+                setRolloutStatus(result.rolloutStatus || 'completed');
+                setActiveSessionId(result.sessionId || null);
 
                 if (result.success) {
-                    addTimeline("Git Commit Pushed");
-                    addLog(`Greenfield system compiled, verified, and committed successfully to GitHub: ${result.repoUrl}`, "success");
+                    addTimeline("Initial Batch Pushed");
+                    addLog("Initial progressive batch successfully generated, sandbox verified, and pushed to Git!", "success");
                     setCreatedRepoUrl(result.repoUrl);
 
-                    // ⚡ REAL-TIME REPO BINDING: Parse and bind the real repository path
                     if (result.repoUrl) {
                         const parsedRepoPath = result.repoUrl.replace("https://github.com/", "");
                         setSelectedRepo(parsedRepoPath);
@@ -984,14 +988,13 @@ export default function Dashboard() {
                     addLog(`Warning: Code compiled locally but remote push was blocked: ${result.error}`, "warn");
                     setIdeError(result.error);
 
-                    // Bind target repo even if initial push failed so the manual retry buttons work!
                     const mockRepoPath = `${githubUser?.login || 'profile'}/${refineProjectName(projectPrompt)}`;
                     setSelectedRepo(mockRepoPath);
                 }
 
                 const upgradedDescription = "Greenfield system successfully initialized and verified.";
 
-                // ⚡ Auto-save Greenfield session to database (F22)
+                // Auto-save Greenfield session to database
                 commitRunToHistory({
                     verifiedPatch: (result.files && result.files[0]?.content) || "# Main verified application entry.",
                     prDescription: upgradedDescription
@@ -1000,18 +1003,67 @@ export default function Dashboard() {
             } catch (e) {
                 setGeneratingProject(false);
                 setPipelineState('completed');
-                setIdeError(`Greenfield Engineering failed: ${e.message}`);
+                setIdeError(`Greenfield progressive execution failed: ${e.message}`);
                 addLog(`Error during sandbox execution: ${e.message}`, "error");
 
-                // Safe fallback configuration
                 const fallbackStructure = [
-                    { path: "src/main.py", content: `print("⚡ System compiled under fallback boundaries.")` },
-                    { path: "Dockerfile", content: `FROM python:3.11-slim\nWORKDIR /app\nCOPY . .\nCMD ["python", "src/main.py"]` },
-                    { path: "requirements.txt", content: "flask\nbcrypt" }
+                    { path: "src/index.js", content: `console.log("⚡ Fallback configuration initiated.");` },
+                    { path: "README.md", content: `# Fallback Active Compilation Workspace\n\nProgressive rollout interrupted: ${e.message}` }
                 ];
                 setGeneratedProjectFiles(fallbackStructure);
                 setViewingFile(fallbackStructure[0]);
             }
+        }
+    };
+
+    // --- ⚡ RESUME INCREMENTAL GENERATION HANDLER ---
+    const resumeIncrementalGeneration = async () => {
+        if (!activeSessionId) return;
+        setGeneratingProject(true);
+        setPipelineState('coding');
+        addLog(`Resuming progressive rollout for active session...`, 'warn');
+        addLog("Loading workspace context and compiling next file batch (up to 3 files)... Please wait.", "info");
+
+        try {
+            const response = await fetch('/api/project/generate/resume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sessionId: activeSessionId,
+                    token: githubToken
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Batch iteration returned an error.");
+            }
+
+            setGeneratedProjectFiles(result.files);
+            setViewingFile(result.justGenerated?.[0] || result.files[0]);
+            setRolloutStatus(result.rolloutStatus);
+
+            addLog(`✓ Successfully generated, compiled and pushed next batch of files to GitHub!`, "success");
+            if (result.justGenerated) {
+                result.justGenerated.forEach(f => {
+                    addLog(`[Constructed File]: ${f.path}`, "success");
+                });
+            }
+
+            if (result.rolloutStatus === 'completed') {
+                addLog("🎉 Progressive Rollout Completed! All planned system files are successfully initialized.", "success");
+                addTimeline("Rollout Complete");
+            } else {
+                addLog("Paused and ready for next batch.", "info");
+            }
+
+        } catch (err) {
+            setIdeError(`Batch generation continuation failed: ${err.message}`);
+            addLog(`Error during batch progression: ${err.message}`, "error");
+        } finally {
+            setGeneratingProject(false);
+            setPipelineState('completed');
         }
     };
 
@@ -1069,7 +1121,7 @@ export default function Dashboard() {
             setGithubRepos(repos);
             setGithubAuthorized(true);
 
-            // ⚡ REAL-TIME CACHING: Store the token inside local cache for persistent sessions
+            // Store the token inside local cache for persistent sessions
             localStorage.setItem('neurosyn_git_token', githubToken.trim());
 
             addLog("Successfully linked remote GitHub profile securely.", "success");
@@ -1132,7 +1184,7 @@ export default function Dashboard() {
         setActiveModal(null);
     };
 
-    // ⚡ DELEGATION: If no user session is active, mount the advanced split-screen Login component
+    // If no user session is active, mount the advanced split-screen Login component
     if (!activeUser) {
         return (
             <Login
@@ -1172,19 +1224,16 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Secure Segmented Navigation */}
+                    {/* Segmented Navigation */}
                     <nav className="p-4 space-y-1 text-sm font-medium">
                         <button onClick={() => { setActiveTab('dashboard'); setPipelineState('idle'); }} className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${activeTab === 'dashboard' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}`}>Dashboard</button>
-
-                        {/* ⚡ ACTIVATED: Executes the secure user-specific history fetcher */}
                         <button onClick={loadUserSessions} className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${activeTab === 'history' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}`}>Live Sessions (History)</button>
-
                         <button onClick={() => { setActiveTab('projects'); setGeneratedProjectFiles([]); setPipelineState('idle'); }} className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${activeTab === 'projects' ? 'bg-zinc-800/50 text-white' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50'}`}>Projects (IDE)</button>
                         <button onClick={fetchAnalytics} className="w-full text-left px-3 py-2 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition-colors">Analytics</button>
                         <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="w-full text-left px-3 py-2 rounded-lg text-rose-500 hover:bg-rose-500/10">Sign Out</button>
                     </nav>
 
-                    {/* ⚡ ACTIVE SESSION HISTORY PANEL (supports interactive renaming) */}
+                    {/* ACTIVE SESSION HISTORY PANEL (supports interactive renaming) */}
                     <div className="mt-4 px-4 flex-grow flex flex-col min-h-0 border-t border-zinc-900 pt-4 text-left">
                         <h3 className="text-[9px] uppercase tracking-widest text-zinc-500 font-extrabold mb-3 flex justify-between items-center">
                             <span>Workspace History</span>
@@ -1227,7 +1276,6 @@ export default function Dashboard() {
                                                 >
                                                     ✏️
                                                 </button>
-                                                {/* ⚡ NEW: Sidebar Trash Button */}
                                                 <button
                                                     onClick={() => handleDeleteSession(run.id)}
                                                     className="text-[10px] text-zinc-500 hover:text-red-400 font-mono shrink-0"
@@ -1264,7 +1312,7 @@ export default function Dashboard() {
                     )}
 
                     {/* ======================================================== */}
-                    {/* TAB 1: TRADITIONAL DIAGNOSTIC & SENTINEL DASHBOARD     */}
+                    {/* TAB 1: TRADITIONAL DIAGNOSTIC & SENTINEL DASHBOARD       */}
                     {/* ======================================================== */}
                     {activeTab === 'dashboard' && (
                         <div className="space-y-6">
@@ -1618,7 +1666,7 @@ export default function Dashboard() {
                                     </div>
 
                                     <div className="flex flex-col md:flex-row justify-between items-center gap-4 pt-2 border-t border-zinc-800/40">
-                                        {/* ⚡ INTERACTIVE: Inline Git Linker (Lets you connect your PAT directly inside the IDE) */}
+                                        {/* Inline Git Linker */}
                                         {!githubAuthorized ? (
                                             <div className="flex gap-2 w-full md:w-[60%]">
                                                 <input
@@ -1698,6 +1746,27 @@ export default function Dashboard() {
                                         </div>
                                     )}
 
+                                    {/* ⚡ ITERATIVE BATCH PROGRESSION CONTROL CARD */}
+                                    {pipelineState === 'completed' && rolloutStatus === 'paused' && !generatingProject && (
+                                        <div className="bg-cyan-500/10 border border-cyan-500/30 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4 text-left animate-in fade-in mb-6">
+                                            <div className="w-full md:w-[65%]">
+                                                <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+                                                    Iterative Rollout Paused (Batch Complete)
+                                                </h4>
+                                                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
+                                                    NeuroSyn-Dev completed, compiled, and pushed the previous set of files to GitHub. Click below to analyze this context and generate the next logical files of the SaaS platform.
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={resumeIncrementalGeneration}
+                                                className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono text-[10px] font-bold px-5 py-2.5 rounded shadow-lg flex items-center gap-2 transition-all shrink-0 w-full md:w-auto text-center justify-center cursor-pointer"
+                                            >
+                                                ⚡ PRESS TO GENERATE NEXT BATCH
+                                            </button>
+                                        </div>
+                                    )}
+
                                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[500px]">
                                         <Card className="p-4 flex flex-col h-full col-span-1 border-zinc-800/80">
                                             <SectionHeader title="WORKSPACE EXPLORER" />
@@ -1726,7 +1795,7 @@ export default function Dashboard() {
                                                     {generatingProject && !viewingFile ? '🧠 ACTIVE COGNITIVE COMPILATION' : `📂 ${viewingFile?.path || 'workspace_editor'}`}
                                                 </span>
 
-                                                {/* ⚡ ALWAYS VISIBLE: Commit button for quick, real-time code deployments */}
+                                                {/* Commit button for quick, real-time code deployments */}
                                                 {viewingFile && !generatingProject && (
                                                     <button
                                                         onClick={handleDirectIdeCommit}
@@ -1780,7 +1849,7 @@ export default function Dashboard() {
                                                         </Card>
                                                     </div>
                                                 ) : (
-                                                    // ⚡ FULLY EDITABLE, SYNTAX-HIGHLIGHTED COLOR CONSOLE (Scroll-Synchronized Version)
+                                                    // FULLY EDITABLE, SYNTAX-HIGHLIGHTED COLOR CONSOLE (Scroll-Synchronized Version)
                                                     <div className="relative w-full h-full min-h-[350px] font-mono text-xs flex-1 select-text text-left">
 
                                                         {/* Layer 1: HTML colored pre-text */}
@@ -1792,7 +1861,7 @@ export default function Dashboard() {
                                                         {/* Layer 2: Transparent, editable textarea */}
                                                         <textarea
                                                             value={viewingFile?.content || ''}
-                                                            onScroll={handleEditorScroll} // ⚡ Scroll lock engaged
+                                                            onScroll={handleEditorScroll} // Scroll lock engaged
                                                             onChange={(e) => {
                                                                 const updatedContent = e.target.value;
                                                                 const index = generatedProjectFiles.findIndex(f => f.path === viewingFile.path);
@@ -1869,12 +1938,11 @@ export default function Dashboard() {
                                                     </span>
                                                 </div>
 
-                                                {/* --- NEW UPDATED BLOCK --- */}
                                                 <p className="text-xs text-zinc-400 font-mono leading-relaxed bg-[#050505] p-3 rounded border border-zinc-800/50 select-text max-h-24 overflow-y-auto mb-4 whitespace-pre-wrap text-left">
                                                     {run.task}
                                                 </p>
 
-                                                {/* ⚡ UPDATED: Renders both LOAD and DELETE actions side-by-side inside the Tab Cards */}
+                                                {/* LOAD and DELETE actions side-by-side inside the Tab Cards */}
                                                 <div className="flex gap-2">
                                                     <button
                                                         onClick={() => loadPastRunState(run)}
@@ -1990,13 +2058,13 @@ export default function Dashboard() {
                                     <div className="bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/50"><p className="text-[10px] text-zinc-500 mb-1">Repairs</p><p className="text-sm text-amber-400 font-mono">{runMetrics.repairs}</p></div>
                                     <div className="col-span-2 bg-zinc-900/50 p-2.5 rounded-lg border border-zinc-800/50 flex justify-between items-center px-3">
                                         <span className="text-[10px] text-zinc-500 font-mono uppercase">Confidence Score</span>
-                                        {/* ⚡ FIXED: Dynamically multiplies decimal formats to display standard percentages */}
                                         <span className="text-sm text-emerald-400 font-mono font-bold">
                                             {runMetrics.confidence < 1
                                                 ? Math.round(runMetrics.confidence * 100)
                                                 : runMetrics.confidence}%
                                         </span>
-                                    </div>                                </div>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -2021,10 +2089,8 @@ export default function Dashboard() {
                                             alert("Configuration Missing:\nPlease ensure GITHUB_CLIENT_ID is set in your Render environment variables.");
                                             return;
                                         }
-                                        // Redirect dynamically with your actual client credentials
                                         window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&scope=repo,read:user,user:email`;
                                     }}
-
                                     className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2.5 rounded-lg text-xs tracking-wider flex items-center justify-center gap-2"
                                 >
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" /></svg>

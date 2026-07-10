@@ -678,79 +678,96 @@ app.post('/api/github/insights', async (req, res) => {
 });
 
 /**
- * ⚡ F16: Greenfield Autonomous App Generator (Robust Git-Aligned Version)
+ * ⚡ F16: Greenfield Autonomous App Generator - PROGRESSIVE ROLLOUT VERSION
+ * Plans the master project file structure and compiles the first batch (3-4 files).
  */
 app.post('/api/project/generate', async (req, res, next) => {
-    const { prompt, token } = req.body;
+    const { prompt, token, email } = req.body; // Map user variables
 
     if (!prompt || !token) {
         return res.status(400).json({ error: 'Prompt and Token are required.' });
     }
 
-    let generatedFiles = [];
+    const activeUserEmail = email || "muaviatanveer27@gmail.com";
+    const sessionId = `RUN-${Date.now()}`;
     let projectName = "autonomous-app";
 
     try {
-        logger.info(`[Generator] Ingesting raw project idea: "${prompt}"`);
+        logger.info(`[Generator] Planning master layout for task: "${prompt}"`);
 
         const userRes = await fetch('https://api.github.com/user', {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'User-Agent': 'NeuroSyn-Dev-OS'
-            }
+            headers: { 'Authorization': `Bearer ${token}`, 'User-Agent': 'NeuroSyn-Dev-OS' }
         });
         if (!userRes.ok) throw new Error("Failed to authenticate GitHub token.");
         const userData = await userRes.json();
         const username = userData.login;
 
-        const schemaPrompt = `
-You are an autonomous AI Software Engineer.
-Based on the user's raw idea: "${prompt}", determine a sanitized, URL-friendly, lowercase repository name (e.g., "auton-cli-calculator" or "nodejs-express-api").
-Then, design a complete, standalone software project. Generate exactly 3 functional files with code.
+        // 1. Ask Qwen-Coder to plan the architectural file list first (Master Plan)
+        const planningPrompt = `
+You are an expert software architect.
+Based on this project specification: "${prompt}", design a full, clean directories blueprint list (exactly 6 to 8 files total) to build a functional, stand-alone codebase.
+Define dependencies for each file (e.g. "src/app.js" requires "package.json").
 
 Return ONLY a valid JSON object matching this schema:
 {
   "projectName": "string",
-  "files": [
-    {
-      "path": "string",
-      "content": "string"
-    }
+  "masterPlan": [
+    { "path": "string", "purpose": "string", "dependencies": ["string"] }
   ]
 }
 `;
 
         const localClient = clients.localAmd;
-        const llmResponse = await localClient.chat.completions.create({
-            model: clients.models.local.qwenCoder || 'qwen2.5-coder:7b',
-            messages: [{ role: 'system', content: schemaPrompt }],
+        const planResponse = await localClient.chat.completions.create({
+            model: clients.models.local.qwenCoder || 'Qwen/Qwen2.5-Coder-7B-Instruct',
+            messages: [{ role: 'system', content: planningPrompt }],
             response_format: { type: 'json_object' },
             temperature: 0.2
         });
 
-        let rawContent = llmResponse.choices[0].message.content.trim();
-        rawContent = rawContent
-            .replace(/^```json\s*/i, '')
-            .replace(/```\s*$/g, '')
-            .trim();
+        const parsedPlan = JSON.parse(planResponse.choices[0].message.content.trim());
+        projectName = (parsedPlan.projectName || "autonomous-app").toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+        const masterPlan = parsedPlan.masterPlan || [];
 
-        const parsedProject = JSON.parse(rawContent);
-        projectName = (parsedProject.projectName || "autonomous-app").toLowerCase().replace(/[^a-z0-9-_]/g, '-');
-        generatedFiles = parsedProject.files || [];
+        if (masterPlan.length === 0) throw new Error("Failed to construct master plan.");
 
-        if (generatedFiles.length === 0) throw new Error("Local model failed to construct project files.");
+        // 2. Select initial batch (first 3 files that have 0 or basic dependencies)
+        const initialBatch = masterPlan.slice(0, 3);
+        const batchFilePaths = initialBatch.map(f => f.path);
 
-        logger.info(`[Generator] Autonomously creating repository: ${username}/${projectName}`);
+        logger.info(`[Generator] Compiling Initial Batch files: [${batchFilePaths.join(', ')}]`);
+
+        // 3. Instruct Qwen-Coder to write code *only* for the initial batch files
+        const filesToCreate = [];
+        for (const fileNode of initialBatch) {
+            const generatePrompt = `
+You are an elite software developer. Write the complete, production-ready code content for the file: "${fileNode.path}".
+Purpose: ${fileNode.purpose}.
+Original Specification: "${prompt}"
+
+Provide highly detailed implementations. Write complete file code. Do not use placeholders or comments like "implement logic here".
+Return ONLY raw file code. Do not include markdown code block syntax.
+`;
+            const codeResponse = await localClient.chat.completions.create({
+                model: clients.models.local.qwenCoder || 'Qwen/Qwen2.5-Coder-7B-Instruct',
+                messages: [{ role: 'system', content: generatePrompt }],
+                temperature: 0.1
+            });
+
+            filesToCreate.push({
+                path: fileNode.path,
+                content: codeResponse.choices[0].message.content.trim().replace(/```[a-zA-Z]*\n/g, '').replace(/```/g, '')
+            });
+        }
+
+        // 4. Create repository on GitHub
+        logger.info(`[Generator] Creating persistent GitHub repository: ${username}/${projectName}`);
         const createRepoRes = await fetch('https://api.github.com/user/repos', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'User-Agent': 'NeuroSyn-Dev-OS'
-            },
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'NeuroSyn-Dev-OS' },
             body: JSON.stringify({
                 name: projectName,
-                description: `🚀 Autonomously designed & compiled by NeuroSyn-Dev: ${prompt}`,
+                description: `🚀 Progressive Greenfield App compiled by NeuroSyn-Dev: ${prompt}`,
                 private: false,
                 auto_init: true
             })
@@ -758,71 +775,49 @@ Return ONLY a valid JSON object matching this schema:
 
         if (!createRepoRes.ok) {
             const errData = await createRepoRes.json();
-            throw new Error(`GitHub: ${errData.message}`);
+            throw new Error(`GitHub Repository Creation Denied: ${errData.message}`);
         }
-
         const repoData = await createRepoRes.json();
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Standard cooling sync
 
-        for (const file of generatedFiles) {
-            logger.info(`[Generator] Syncing file: ${file.path}`);
+        // 5. Commit initial batch of files sequentially
+        for (const file of filesToCreate) {
             const encodedContent = Buffer.from(file.content).toString('base64');
-
-            let fileSha = null;
-            try {
-                const fileCheck = await fetch(`https://api.github.com/repos/${username}/${projectName}/contents/${file.path}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'User-Agent': 'NeuroSyn-Dev-OS'
-                    }
-                });
-                if (fileCheck.ok) {
-                    const fileCheckData = await fileCheck.json();
-                    fileSha = fileCheckData.sha;
-                    logger.info(`[Generator] Overwrite reference found for: ${file.path} (SHA: ${fileSha})`);
-                }
-            } catch (shaError) { }
-
-            const commitRes = await fetch(`https://api.github.com/repos/${username}/${projectName}/contents/${file.path}`, {
+            await fetch(`https://api.github.com/repos/${username}/${projectName}/contents/${file.path}`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'NeuroSyn-Dev-OS'
-                },
-                body: JSON.stringify({
-                    message: `⚙️ Autonomous setup of ${file.path}`,
-                    content: encodedContent,
-                    sha: fileSha || undefined
-                })
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'NeuroSyn-Dev-OS' },
+                body: JSON.stringify({ message: `⚙️ Setup of ${file.path}`, content: encodedContent })
             });
-
-            if (!commitRes.ok) {
-                const commitErr = await commitRes.json();
-                logger.warn(`[Generator] Failed to write file ${file.path}: ${commitErr.message}`);
-            }
         }
 
-        logger.info(`[Generator] Greenfield repository initialized and pushed to main!`);
+        // 6. Save State in MongoDB (rolloutStatus = paused)
+        const session = new UserSession({
+            id: sessionId,
+            userId: activeUserEmail,
+            type: 'greenfield',
+            repo: `${username}/${projectName}`,
+            title: `Incremental Build: ${projectName}`,
+            prompt: prompt,
+            patch: filesToCreate[0]?.content || '',
+            logs: `Planned master layout (${masterPlan.length} modules).\nBatch 1 successfully generated & committed.`,
+            files: filesToCreate,
+            rolloutStatus: 'paused', // Set state to paused to trigger frontend continuation
+            masterPlan: masterPlan
+        });
+        await session.save();
+
+        logger.info(`[Generator] Initial progressive batch complete. State saved as paused.`);
         return res.status(200).json({
             success: true,
+            sessionId,
             repoUrl: repoData.html_url,
             projectName,
-            files: generatedFiles
+            files: filesToCreate,
+            rolloutStatus: 'paused'
         });
 
     } catch (error) {
-        logger.error(`[Generator] Remote push step blocked: ${error.message}`);
-
-        if (generatedFiles.length > 0) {
-            return res.status(200).json({
-                success: false,
-                error: `GitHub Push Blocked: ${error.message}. (Local compilation completed successfully)`,
-                projectName,
-                files: generatedFiles
-            });
-        }
-
+        logger.error(`[Generator] Initial progressive batch aborted: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
@@ -1227,6 +1222,127 @@ app.post('/api/history/delete', async (req, res) => {
         throw new Error("Session not found or unauthorized to delete.");
     } catch (error) {
         return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * ⚡ F16-Continuation: Progressive Batch Resumer
+ * Loads the active session, identifies the next un-built files from the Master Plan, 
+ * generates their complete code content (using previous files as context), and commits to Git.
+ */
+app.post('/api/project/generate/resume', async (req, res) => {
+    const { sessionId, token } = req.body;
+
+    if (!sessionId || !token) {
+        return res.status(400).json({ error: "Session ID and Token are required." });
+    }
+
+    try {
+        const session = await UserSession.findOne({ id: sessionId });
+        if (!session) return res.status(404).json({ error: "Active engineering session not found." });
+
+        const completedPaths = session.files.map(f => f.path);
+        const pendingFiles = session.masterPlan.filter(node => !completedPaths.includes(node.path));
+
+        // If no more files remain, update status to completed
+        if (pendingFiles.length === 0) {
+            session.rolloutStatus = 'completed';
+            await session.save();
+            return res.status(200).json({ success: true, rolloutStatus: 'completed', files: session.files });
+        }
+
+        // Select the next batch of up to 3 files
+        const nextBatch = pendingFiles.slice(0, 3);
+        const batchToCreate = [];
+
+        logger.info(`[Generator] Generating next progressive batch: ${nextBatch.map(f => f.path).join(', ')}`);
+
+        // Compile existing files list as context strings to provide to Qwen
+        const existingCodeContext = session.files.map(f => `\n--- File: ${f.path} ---\n${f.content}`).join('\n');
+
+        const localClient = clients.localAmd;
+        for (const fileNode of nextBatch) {
+            const generatePrompt = `
+You are an elite software developer. Write the complete, production-ready code content for the file: "${fileNode.path}".
+Purpose: ${fileNode.purpose}.
+Original Specification: "${session.prompt}"
+
+To maintain strict architectural coherence, align imports and dependencies with these existing files already present in the codebase:
+${existingCodeContext}
+
+Write complete file code. Do not use placeholders.
+Return ONLY raw file code. Do not include markdown code block ticks.
+`;
+
+            const codeResponse = await localClient.chat.completions.create({
+                model: clients.models.local.qwenCoder || 'Qwen/Qwen2.5-Coder-7B-Instruct',
+                messages: [{ role: 'system', content: generatePrompt }],
+                temperature: 0.1
+            });
+
+            batchToCreate.push({
+                path: fileNode.path,
+                content: codeResponse.choices[0].message.content.trim().replace(/```[a-zA-Z]*\n/g, '').replace(/```/g, '')
+            });
+        }
+
+        // Commit newly generated files sequentially to GitHub
+        const repoPath = session.repo; // e.g. "muaviatanveer/my-repo"
+        for (const file of batchToCreate) {
+            const encodedContent = Buffer.from(file.content).toString('base64');
+
+            // Fetch file SHA in case it somehow exists
+            let fileSha = null;
+            try {
+                const checkRes = await fetch(`https://api.github.com/repos/${repoPath}/contents/${file.path}`, {
+                    headers: { 'Authorization': `Bearer ${token}`, 'User-Agent': 'NeuroSyn-Dev-OS' }
+                });
+                if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    fileSha = checkData.sha;
+                }
+            } catch (e) { }
+
+            await fetch(`https://api.github.com/repos/${repoPath}/contents/${file.path}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'User-Agent': 'NeuroSyn-Dev-OS' },
+                body: JSON.stringify({
+                    message: `⚙️ progressive setup of ${file.path}`,
+                    content: encodedContent,
+                    sha: fileSha || undefined
+                })
+            });
+        }
+
+        // Append new files to our database record
+        session.files.push(...batchToCreate);
+
+        // Determine if project is fully completed
+        const updatedCompletedPaths = session.files.map(f => f.path);
+        const totalPlannedPaths = session.masterPlan.map(f => f.path);
+        const remaining = totalPlannedPaths.filter(p => !updatedCompletedPaths.includes(p));
+
+        if (remaining.length === 0) {
+            session.rolloutStatus = 'completed';
+            session.logs += `\nAll Planned progressive modules constructed successfully.`;
+        } else {
+            session.rolloutStatus = 'paused';
+            session.logs += `\nBatch complete. Constructed next progressive modules: [${batchToCreate.map(f => f.path).join(', ')}]`;
+        }
+
+        await session.save();
+
+        logger.info(`[Generator] Batch iteration finished successfully. Remaining pending: ${remaining.length}`);
+        return res.status(200).json({
+            success: true,
+            rolloutStatus: session.rolloutStatus,
+            files: session.files,
+            justGenerated: batchToCreate
+        });
+
+    } catch (error) {
+        logger.error(`[Generator] Progressive batch resumption crashed: ${error.message}`);
+        res.status(500).json({ error: error.message });
     }
 });
 

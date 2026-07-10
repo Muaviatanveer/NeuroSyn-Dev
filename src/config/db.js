@@ -12,7 +12,6 @@ export const connectDB = async () => {
     }
 
     try {
-        // ⚡ FIXED: Removed deprecated useNewUrlParser and useUnifiedTopology options
         await mongoose.connect(MONGODB_URI);
         logger.info("✅ MongoDB connected successfully and persistently.");
         return true;
@@ -40,6 +39,14 @@ const SessionSchema = new mongoose.Schema({
     files: [{
         path: { type: String },
         content: { type: String }
+    }],
+
+    // --- ⚡ NEW PROGRESSIVE ROLLOUT SCHEMA FIELDS ---
+    rolloutStatus: { type: String, enum: ['idle', 'paused', 'completed'], default: 'idle' },
+    masterPlan: [{
+        path: { type: String },
+        purpose: { type: String },
+        dependencies: [{ type: String }] // Lists paths of files that must compile first
     }]
 });
 
