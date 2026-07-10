@@ -188,12 +188,15 @@ app.post('/api/task/stream', async (req, res) => {
             // ⚡ Smart Naming Applied!
             const projectName = refineProjectName(options.prompt);
 
-            // Map and resolve target files
+            // ⚡ Upgraded Array & Node Verification Guard (Patch 1)
             if (result.nodeOutputs) {
                 Object.entries(result.nodeOutputs).forEach(([nodeId, output]) => {
                     if (output && output.patch) {
-                        const nodeInfo = result.executionPlan?.nodes?.find(n => n.id === nodeId);
-                        let filePath = nodeInfo?.targetFile || `src/module_${nodeId}.js`;
+                        const nodeInfo = result.executionPlan && result.executionPlan.nodes
+                            ? result.executionPlan.nodes.find(function (n) { return n.id === nodeId; })
+                            : null;
+
+                        let filePath = (nodeInfo && nodeInfo.targetFile) || `src/module_${nodeId}.js`;
 
                         if (filePath.endsWith('/')) {
                             if (filePath.includes('kubernetes') || filePath.includes('ci-cd') || filePath.includes('infrastructure')) {
@@ -418,7 +421,13 @@ app.post('/api/task/scan', async (req, res, next) => {
         }
 
         const allowedExtensions = ['.js', '.ts', '.py', '.java'];
-        const codeFiles = treeData.tree?.filter(node => node.type === 'blob' && allowedExtensions.some(ext => node.path.endsWith(ext))) || [];
+
+        // ⚡ Upgraded Node Filter Syntax Guard (Patch 2)
+        const codeFiles = (treeData.tree && treeData.tree.filter(function (node) {
+            return node.type === 'blob' && allowedExtensions.some(function (ext) {
+                return node.path.endsWith(ext);
+            });
+        })) || [];
 
         const filesToAnalyze = codeFiles.slice(0, 2);
         const weaknesses = [];

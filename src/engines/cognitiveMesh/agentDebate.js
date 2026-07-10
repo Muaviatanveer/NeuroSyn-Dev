@@ -177,7 +177,7 @@ CRITICAL REASONING DIRECTIVES:
             if (taskType === 'security-vulnerability' && persona.dimension === 'security') {
                 persona.weight = 1.6;
                 logger.info(`[CognitiveMesh] Security sensitivity flagged. Security Auditor weight upgraded to 1.6x`);
-            } else if (metadata?.targetComponent?.includes('utils') && persona.dimension === 'performance') {
+            } else if (metadata && metadata.targetComponent && metadata.targetComponent.includes('utils') && persona.dimension === 'performance') {
                 persona.weight = 1.3;
             }
         });
