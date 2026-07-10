@@ -12,10 +12,8 @@ export const connectDB = async () => {
     }
 
     try {
-        await mongoose.connect(MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
+        // ⚡ FIXED: Removed deprecated useNewUrlParser and useUnifiedTopology options
+        await mongoose.connect(MONGODB_URI);
         logger.info("✅ MongoDB connected successfully and persistently.");
         return true;
     } catch (error) {
@@ -26,7 +24,7 @@ export const connectDB = async () => {
 
 const SessionSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
-    userId: { type: String, required: true, index: true }, // Maps to the authenticated user's email
+    userId: { type: String, required: true, index: true },
     type: { type: String, default: 'diagnostic' },
     date: { type: Date, default: Date.now },
     repo: { type: String, default: 'Local Target Execution' },
