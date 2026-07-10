@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 
 // --- UI Utility Components ---
@@ -102,7 +101,7 @@ export default function Dashboard() {
     const handleRenameSession = async (runId) => {
         if (!editingTitleText.trim() || !activeUser) return;
         try {
-            const res = await fetch('http://localhost:3000/api/history/rename', {
+            const res = await fetch('/api/history/rename', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: activeUser.email, runId, newTitle: editingTitleText })
@@ -126,7 +125,7 @@ export default function Dashboard() {
         if (!confirmClear) return;
 
         try {
-            const response = await fetch('http://localhost:3000/api/history/delete', {
+            const response = await fetch('/api/history/delete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: activeUser.email, runId })
@@ -272,7 +271,7 @@ export default function Dashboard() {
 
                 const fetchGoogleProfile = async () => {
                     try {
-                        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                        const res = await fetch('https://googleapis.com/oauth2/v3/userinfo', {
                             headers: { 'Authorization': `Bearer ${accessToken}` }
                         });
                         const userData = await res.json();
@@ -304,7 +303,7 @@ export default function Dashboard() {
             const exchangeCodeForToken = async () => {
                 setLoadingGithub(true);
                 try {
-                    const res = await fetch('http://localhost:3000/api/auth/github', {
+                    const res = await fetch('/api/auth/github', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ code })
@@ -343,7 +342,7 @@ export default function Dashboard() {
         setLoadingHistory(true);
         setActiveTab('history');
         try {
-            const res = await fetch('http://localhost:3000/api/history');
+            const res = await fetch('/api/history');
             const data = await res.json();
             setPastRuns(data.history || []);
         } catch (e) {
@@ -375,7 +374,7 @@ export default function Dashboard() {
     const commitRunToHistory = async (result, type = "diagnostic", files = []) => {
         if (!activeUser) return;
         try {
-            await fetch('http://localhost:3000/api/history/save', {
+            await fetch('/api/history/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -399,7 +398,7 @@ export default function Dashboard() {
         if (!activeUser) return;
         setActiveTab('history');
         try {
-            const res = await fetch(`http://localhost:3000/api/history/user?email=${activeUser.email}`);
+            const res = await fetch(`/api/history/user?email=${activeUser.email}`);
             const data = await res.json();
             setPastRuns(data.history || []);
         } catch (e) { }
@@ -475,7 +474,7 @@ export default function Dashboard() {
         const projectName = rawName || "autonomous-system";
 
         try {
-            const response = await fetch('http://localhost:3000/api/project/deploy', {
+            const response = await fetch('/api/project/deploy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -634,7 +633,7 @@ export default function Dashboard() {
         setChosenStrategy(null);
 
         try {
-            const response = await fetch('http://localhost:3000/api/task/strategy', {
+            const response = await fetch('/api/task/strategy', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task: taskInput, objectives })
             });
             if (!response.ok) throw new Error("Strategy Engine error.");
@@ -664,7 +663,7 @@ export default function Dashboard() {
         addLog(`Initiating pipeline with approved strategy: "${chosenStrategy.name}"`, 'warn');
 
         try {
-            const response = await fetch('http://localhost:3000/api/task/stream', {
+            const response = await fetch('/api/task/stream', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task: taskInput, options: { strategy: chosenStrategy } })
             });
 
@@ -797,7 +796,7 @@ export default function Dashboard() {
 
             try {
                 addLog('Fetching remote repository tree...', 'info');
-                const treeRes = await fetch('http://localhost:3000/api/github/tree', {
+                const treeRes = await fetch('/api/github/tree', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ repo: selectedRepo, token: githubToken })
                 });
@@ -808,7 +807,7 @@ export default function Dashboard() {
                 }
 
                 addLog('Engaging NeuroSyn-Dev Engines for modification...', 'info');
-                const streamRes = await fetch('http://localhost:3000/api/task/stream', {
+                const streamRes = await fetch('/api/task/stream', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ task: projectPrompt })
                 });
@@ -855,7 +854,7 @@ export default function Dashboard() {
                 }
 
                 addLog('Initiating secure auto-push to GitHub...', 'warn');
-                const deployRes = await fetch('http://localhost:3000/api/task/deploy', {
+                const deployRes = await fetch('/api/task/deploy', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         repo: selectedRepo, token: githubToken, patch: finalPatch,
@@ -889,7 +888,7 @@ export default function Dashboard() {
             addLog(`Initiating Cognitive Greenfield Creation: "${projectPrompt}"`, 'warn');
 
             try {
-                const response = await fetch('http://localhost:3000/api/task/stream', {
+                const response = await fetch('/api/project/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1031,7 +1030,7 @@ export default function Dashboard() {
         addLog('Initiating secure Git push to main repository branch...', 'warn');
 
         try {
-            const response = await fetch('http://localhost:3000/api/task/deploy', {
+            const response = await fetch('/api/task/deploy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -1097,7 +1096,7 @@ export default function Dashboard() {
         setScanProgress('Connecting secure tunnel to repository...');
         try {
             setScanProgress('Parsing codebase Abstract Syntax Tree (AST)...');
-            const res = await fetch('http://localhost:3000/api/task/scan', {
+            const res = await fetch('/api/task/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ repo: selectedRepo, token: githubToken })
@@ -1114,12 +1113,6 @@ export default function Dashboard() {
         }
     };
 
-    const selectWeaknessToRepair = (weakness) => {
-        setSelectedWeakness(weakness);
-        setTaskInput(`COGNITIVE SENTINEL REPAIR REQUEST:\nRepository: ${selectedRepo}\nWeakness: ${weakness.title}\nFile: ${weakness.targetFile}\nSeverity: ${weakness.severity}\n\nGoal: Implement safety guards to resolve this enterprise vulnerability.`);
-        setActiveModal(null);
-    };
-
     // --- HISTORICAL RUNS LOADER ---
     const fetchAnalytics = async () => {
         if (!githubToken || !selectedRepo) {
@@ -1128,7 +1121,7 @@ export default function Dashboard() {
         }
         setActiveModal('analytics');
         try {
-            const res = await fetch('http://localhost:3000/api/github/insights', {
+            const res = await fetch('/api/github/insights', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ repo: selectedRepo, token: githubToken })
@@ -1138,12 +1131,18 @@ export default function Dashboard() {
         } catch (e) { }
     };
 
+    const selectWeaknessToRepair = (weakness) => {
+        setSelectedWeakness(weakness);
+        setTaskInput(`COGNITIVE SENTINEL REPAIR REQUEST:\nRepository: ${selectedRepo}\nWeakness: ${weakness.title}\nFile: ${weakness.targetFile}\nSeverity: ${weakness.severity}\n\nGoal: Implement safety guards to resolve this enterprise vulnerability.`);
+        setActiveModal(null);
+    };
+
     // --- USER LOCKSCREEN DISPLAY GATING ---
     if (!activeUser) {
         // ⚡ REAL GOOGLE REDIRECT HANDLER
         const initiateRealGoogleOAuth = async () => {
             try {
-                const res = await fetch('http://localhost:3000/api/config/google');
+                const res = await fetch('/api/config/google');
                 const data = await res.json();
 
                 if (!data.clientId) {
