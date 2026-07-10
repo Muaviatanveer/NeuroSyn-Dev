@@ -1,4 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
+import Login from './Login';
 
 // --- UI Utility Components ---
 const Card = ({ children, className = "" }) => (
@@ -1137,54 +1139,15 @@ export default function Dashboard() {
         setActiveModal(null);
     };
 
-    // --- USER LOCKSCREEN DISPLAY GATING ---
+    // ⚡ DELEGATION: If no user session is active, mount the advanced split-screen Login component
     if (!activeUser) {
-        // ⚡ REAL GOOGLE REDIRECT HANDLER
-        const initiateRealGoogleOAuth = async () => {
-            try {
-                const res = await fetch('/api/config/google');
-                const data = await res.json();
-
-                if (!data.clientId) {
-                    alert("SaaS Config Warning:\nGOOGLE_CLIENT_ID is missing in your server 'AMD/.env' file.\n\nPlease define your credentials in the environment variables to activate real Google Login callbacks.");
-                    return;
-                }
-
-                const redirectUri = encodeURIComponent(window.location.origin);
-                window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${data.clientId}&redirect_uri=${redirectUri}&response_type=token&scope=profile%20email`;
-            } catch (err) {
-                alert("Connection error with backend server: " + err.message);
-            }
-        };
-
         return (
-            <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 text-zinc-300 font-sans selection:bg-cyan-500/30">
-                <div className="absolute -inset-0.5 bg-gradient-to-tr from-cyan-500 to-violet-500 blur-3xl opacity-10 rounded-full"></div>
-
-                <Card className="p-8 w-full max-w-sm border-zinc-800/80 shadow-2xl space-y-6 relative text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto shadow-xl">
-                        <svg className="w-8 h-8 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                    </div>
-
-                    <div>
-                        <h2 className="text-xl font-bold text-white tracking-wide">NeuroSyn-Dev OS</h2>
-                        <p className="text-xs text-zinc-500 mt-1">Autonomous Metacognitive Development Engine</p>
-                    </div>
-
-                    {/* ⚡ ACTIVATED: Direct Google Redirection Button */}
-                    <button
-                        onClick={initiateRealGoogleOAuth}
-                        className="w-full bg-white hover:bg-zinc-200 text-black font-bold py-3 rounded-lg text-xs tracking-wider flex items-center justify-center gap-2.5 transition-all shadow-[0_0_15px_rgba(255,255,255,0.1)]"
-                    >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24">
-                            <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.13-5.136 4.13A5.71 5.71 0 0 1 8.24 12.8a5.71 5.71 0 0 1 5.75-5.73c2.313 0 4.112 1.157 5.005 2.146l3.16-3.086C20.15 4.15 17.34 2.5 14 2.5 8.16 2.5 3.5 7.16 3.5 13s4.66 10.5 10.5 10.5c5.96 0 10.15-4.14 10.15-10.2 0-.69-.06-1.35-.18-2.015H12.24Z" />
-                        </svg>
-                        SIGN IN WITH GOOGLE
-                    </button>
-                </Card>
-            </div>
+            <Login
+                onLoginSuccess={(profile) => {
+                    setActiveUser(profile);
+                    localStorage.setItem('neurosyn_user', JSON.stringify(profile));
+                }}
+            />
         );
     }
 
@@ -1774,7 +1737,7 @@ export default function Dashboard() {
                                                 {viewingFile && !generatingProject && (
                                                     <button
                                                         onClick={handleDirectIdeCommit}
-                                                        className="bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-[10px] font-bold px-3 py-1 rounded shadow cursor-pointer transition-all"
+                                                        className="bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-[10px] font-bold px-3 py-1 shadow cursor-pointer transition-all"
                                                     >
                                                         💾 DEPLOY & COMMIT CHANGES
                                                     </button>
