@@ -38,11 +38,11 @@ clients.openai = hasFireworks ? clients.fireworks : clients.localAmd;
 // --- 4. Model Registry ---
 clients.models = {
     fireworks: {
-        gemma2_9b: 'accounts/fireworks/models/gemma2-9b-it',
+        // ⚡ FIXED: Added correct hyphens to match Fireworks AI's official hosted model
+        gemma2_9b: 'accounts/fireworks/models/gemma-2-9b-it',
         gemma2_27b: 'accounts/fireworks/models/gemma-2-27b-it'
     },
     local: {
-        // Point to the exact model loaded inside your vLLM server
         qwenCoder: 'Qwen/Qwen2.5-Coder-7B-Instruct',
         gemma: 'Qwen/Qwen2.5-Coder-7B-Instruct',
         lightweight: 'Qwen/Qwen2.5-Coder-7B-Instruct'
