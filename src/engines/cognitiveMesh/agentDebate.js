@@ -80,13 +80,12 @@ export class CognitiveMeshDebateEngine {
                     throw new Error(`Self-healing exhausted. Failed to resolve execution errors: ${lastError}`);
                 }
             } else {
-                // Read actions or analysis steps
-                nodeOutputs[node.id] = await this._executeReadOrAnalyze(node, route, clients);
+                // Read actions or analysis steps (Now fully shielded with failover!)
+                nodeOutputs[node.id] = await this._executeReadOrAnalyze(node, route, clients, sendStreamData);
             }
         }
 
         // 3. Spawns specialized multi-agent engineering debate with live streams
-        // ⚡ Node v12 Safe: Removed optional chaining (?.patch)
         const foundPatchNode = Object.values(nodeOutputs).find(o => o && o.patch);
         const synthesizedCode = foundPatchNode ? foundPatchNode.patch : '';
 
@@ -146,17 +145,38 @@ CRITICAL REASONING DIRECTIVES:
         };
     }
 
-    async _executeReadOrAnalyze(node, route, clients) {
-        const clientInstance = clients[route.client];
-        const response = await clientInstance.chat.completions.create({
-            model: route.model,
-            messages: [
-                { role: 'system', content: `You are an expert static analyzer. Scan target directories/files.` },
-                { role: 'user', content: `Analyze the files near path: ${node.targetFile}. Action: ${node.action}` }
-            ],
-            temperature: 0.1
-        });
-        return { logs: response.choices[0].message.content };
+    /**
+     * Reads actions or static analysis, dynamically failing over to local AMD GPU if Fireworks fails.
+     */
+    async _executeReadOrAnalyze(node, route, clients, sendStreamData) {
+        try {
+            const clientInstance = clients[route.client];
+            const response = await clientInstance.chat.completions.create({
+                model: route.model,
+                messages: [
+                    { role: 'system', content: `You are an expert static analyzer. Scan target directories/files.` },
+                    { role: 'user', content: `Analyze the files near path: ${node.targetFile}. Action: ${node.action}` }
+                ],
+                temperature: 0.1
+            });
+            return { logs: response.choices[0].message.content };
+        } catch (err) {
+            // ⚡ ENTERPRISE FAILOVER SHIELD: Bypasses cloud 404s and runs on local AMD GPU
+            logger.warn(`[CognitiveMesh] Cloud route ${route.model} failed (${err.message}). Seamlessly failing over to Local AMD GPU...`);
+            if (sendStreamData) {
+                sendStreamData('status', { message: `⚠️ Cloud API warning. Seamlessly routing static analysis to Local AMD GPU...` });
+            }
+
+            const fallbackResponse = await clients.localAmd.chat.completions.create({
+                model: 'Qwen/Qwen2.5-Coder-7B-Instruct',
+                messages: [
+                    { role: 'system', content: `You are an expert static analyzer. Scan target directories/files.` },
+                    { role: 'user', content: `Analyze the files near path: ${node.targetFile}. Action: ${node.action}` }
+                ],
+                temperature: 0.1
+            });
+            return { logs: fallbackResponse.choices[0].message.content };
+        }
     }
 
     /**
@@ -175,7 +195,6 @@ CRITICAL REASONING DIRECTIVES:
             { name: "QA Lead", dimension: "testing", weight: 1.0, focus: "Edge cases coverage, boundary test cases" }
         ];
 
-        // ⚡ Node v12 Safe: Removed optional chaining (metadata?.complexity)
         const taskType = (metadata && metadata.complexity) === 'high' ? 'security-vulnerability' : 'bug-fix';
         criticPersonas.forEach(persona => {
             if (taskType === 'security-vulnerability' && persona.dimension === 'security') {
@@ -225,7 +244,6 @@ Analyze and output a JSON containing strictly:
                     temperature: 0.1
                 });
 
-                // Ensure markdown is stripped from local failover too
                 let rawFallback = fallbackResponse.choices[0].message.content.trim();
                 rawFallback = rawFallback.replace(/^```json\s*/i, '').replace(/```\s*$/g, '').trim();
                 parsed = JSON.parse(rawFallback);
@@ -310,5 +328,13 @@ Analyze and output a JSON containing strictly:
         return sorted.filter(Boolean);
     }
 }
+
+// Dynamic fallback import resolver
+let codeExecutor = null;
+import('../../services/codeExecutorService.js').then(module => {
+    codeExecutor = module.default;
+}).catch(e => {
+    logger.warn("[CognitiveMesh] codeExecutorService loading delayed.");
+});
 
 export default new CognitiveMeshDebateEngine();
