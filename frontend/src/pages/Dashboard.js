@@ -1150,7 +1150,7 @@ export default function Dashboard() {
                     return;
                 }
 
-                const redirectUri = encodeURIComponent('http://localhost:3001');
+                const redirectUri = encodeURIComponent(window.location.origin);
                 window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${data.clientId}&redirect_uri=${redirectUri}&response_type=token&scope=profile%20email`;
             } catch (err) {
                 alert("Connection error with backend server: " + err.message);
