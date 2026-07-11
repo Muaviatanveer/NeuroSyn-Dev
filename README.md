@@ -13,7 +13,7 @@
 
   <br>
 
-  **[🚀 Live Demo](https://neurosyn-dev.onrender.com) | [🎥 Demo Video](#) | [📊 Architecture Slides](#)**
+  **[🚀 Live Demo](https://neurosyn-dev.onrender.com) | [🎥 Demo Video](https://drive.google.com/file/d/177VtmFqdKIfCiUTNCkLKDTCoyClBn85u/view) | [📊 Architecture Slides](https://storage.googleapis.com/lablab-static-eu/presentations/submissions/go8ozv45e60y0tgsdxw8b7la/go8ozv45e60y0tgsdxw8b7la-1783782354483_gajm4ubo7u5n50vit6u7edep.pdf)**
 </div>
 
 ---
